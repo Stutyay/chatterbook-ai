@@ -451,7 +451,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👥 Authors
 
-- **Your Name** - *Initial work* - [YourGitHub](https://github.com/yourusername)
+- **Stuti Gupta** -  [Stutyay](https://github.com/Stutyay)
+- **Priyanka Verma** - [noshimi-imnida](https://github.com/noshimi-imnida)
+- **Yamini Thepra** - [YaminiThepra](https://github.com/YaminiThepra)
+- **Arushi Malviya** - [arushimalviya22](https://github.com/arushimalviya22)
 
 ## 🙏 Acknowledgments
 
