@@ -466,6 +466,18 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **GitHub:** [@Stutyay](https://github.com/Stutyay)
 - **LinkedIn:** [Stuti Gupta](https://www.linkedin.com/in/stuti-gupta-256839293/)
 
+-**Email:** noshimi14india@gmail.com
+**Github:** [noshimi-imnida](https://github.com/noshimi-imnida)
+**LinkedIn:** [Priyanka Verma](https://www.linkedin.com/in/priyanka-verma-928723292)
+
+**Email:** yaminithepra@gmail.com
+**Github:** [YaminiThepra](https://github.com/YaminiThepra)
+**LinkedIn:** [Yamini Thepra](
+
+**Email:** arushimalviya.16@gmail.com
+**Github:** [arushimalviya22](https://github.com/arushimalviya22)
+**LinkedIn:**:[Arushi Malviya](https://www.linkedin.com/in/arushi-malviya-11998924a?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app)
+
 ## 🗺️ Roadmap
 
 - [ ] Add OCR for scanned PDFs
