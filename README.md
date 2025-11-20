@@ -462,9 +462,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📧 Contact
 
-- **Email:** your.email@example.com
-- **GitHub:** [@yourusername](https://github.com/yourusername)
-- **LinkedIn:** [Your Name](https://linkedin.com/in/yourname)
+- **Email:** stutigupta817@gmail.com
+- **GitHub:** [@Stutyay](https://github.com/Stutyay)
+- **LinkedIn:** [Stuti Gupta](https://www.linkedin.com/in/stuti-gupta-256839293/)
 
 ## 🗺️ Roadmap
 
