@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini AI Chatbot</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-container {
+            width: 100%;
+            max-width: 900px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            margin: 20px auto;
+            height: calc(100vh - 40px);
+        }
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            text-align: center;
+            position: relative;
+            flex-shrink: 0;
+        }
+        .chat-header h1 { font-size: 2rem; margin-bottom: 8px; }
+        .chat-header p { opacity: 0.9; font-size: 1rem; }
+        .status-dot {
+            position: absolute;
+            top: 25px;
+            right: 25px;
+            width: 12px;
+            height: 12px;
+            background: #4ade80;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.6; }
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 25px;
+            background: #f5f5f5;
+        }
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .message.user { justify-content: flex-end; }
+        .message-bubble {
+            max-width: 75%;
+            padding: 16px 20px;
+            border-radius: 18px;
+            word-wrap: break-word;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+        .user .message-bubble {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        .bot .message-bubble {
+            background: white;
+            color: #333;
+            border: 1px solid #e0e0e0;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .error .message-bubble {
+            background: #fee;
+            border-color: #fcc;
+            color: #c00;
+        }
+        .welcome {
+            text-align: center;
+            color: #666;
+            padding: 60px 30px;
+        }
+        .welcome h2 { font-size: 1.8rem; margin-bottom: 15px; color: #667eea; }
+        .welcome p { font-size: 1.1rem; margin-bottom: 10px; }
+        .typing { 
+            padding: 15px 25px; 
+            color: #999; 
+            font-style: italic;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+        .typing-dots span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #999;
+            animation: typing 1.4s infinite;
+        }
+        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-10px); }
+        }
+        .chat-input-area {
+            padding: 20px;
+            background: white;
+            border-top: 2px solid #e0e0e0;
+            flex-shrink: 0;
+        }
+        .controls { display: flex; gap: 12px; margin-bottom: 15px; }
+        .btn {
+            padding: 10px 18px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .btn:hover {
+            background: #f5f5f5;
+            border-color: #667eea;
+            transform: translateY(-1px);
+        }
+        .input-form { display: flex; gap: 12px; align-items: flex-end; }
+        .input-box {
+            flex: 1;
+            padding: 16px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+            resize: none;
+            font-family: inherit;
+            min-height: 54px;
+            max-height: 120px;
+        }
+        .input-box:focus { border-color: #667eea; }
+        .send-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            font-size: 22px;
+        }
+        .send-btn:hover:not(:disabled) {
+            transform: scale(1.08);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        .send-btn:disabled { 
+            background: #ccc; 
+            cursor: not-allowed; 
+            transform: none; 
+        }
+        .back-home {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 12px 24px;
+            background: white;
+            color: #667eea;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+            z-index: 100;
+        }
+        .back-home:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+        }
+    </style>
+</head>
+<body>
+    <a href="/" class="back-home">← Back to Home</a>
+    
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="status-dot"></div>
+            <h1>🤖 Gemini AI Chat</h1>
+            <p>Powered by Google Gemini 2.5 Flash</p>
+        </div>
+        
+        <div class="chat-messages" id="messages">
+            <div class="welcome">
+                <h2>Welcome! 👋</h2>
+                <p>I'm your AI assistant powered by Gemini</p>
+                <p>Ask me anything!</p>
+            </div>
+        </div>
+        
+        <div class="typing" id="typing" style="display: none;">
+            <div class="typing-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            AI is thinking...
+        </div>
+        
+        <div class="chat-input-area">
+            <div class="controls">
+                <button class="btn" onclick="clearChat()">🗑️ Clear Chat</button>
+                <button class="btn" onclick="showDebug()">🔍 Debug</button>
+            </div>
+            <form class="input-form" id="form">
+                <textarea id="input" class="input-box" placeholder="Type your message..." rows="1" required></textarea>
+                <button type="submit" class="send-btn" id="sendBtn">➤</button>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        class ChatBot {
+            constructor() {
+                this.form = document.getElementById('form');
+                this.input = document.getElementById('input');
+                this.messages = document.getElementById('messages');
+                this.typing = document.getElementById('typing');
+                this.sendBtn = document.getElementById('sendBtn');
+                
+                this.form.onsubmit = (e) => { 
+                    e.preventDefault(); 
+                    this.send(); 
+                };
+                
+                this.input.onkeydown = (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) { 
+                        e.preventDefault(); 
+                        this.send(); 
+                    }
+                };
+                
+                this.input.oninput = () => {
+                    this.input.style.height = 'auto';
+                    this.input.style.height = Math.min(this.input.scrollHeight, 120) + 'px';
+                };
+            }
+            
+            async send() {
+                const text = this.input.value.trim();
+                if (!text) return;
+                
+                console.log('Sending message:', text);
+                
+                this.addMsg(text, 'user');
+                this.input.value = '';
+                this.input.style.height = 'auto';
+                this.showTyping(true);
+                this.sendBtn.disabled = true;
+                
+                try {
+                    console.log('Calling API: /gemini/chat');
+                    
+                    const res = await fetch('/gemini/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ message: text })
+                    });
+                    
+                    console.log('Response status:', res.status);
+                    
+                    const data = await res.json();
+                    console.log('Response data:', data);
+                    
+                    if (res.ok) {
+                        this.addMsg(data.response, 'bot');
+                    } else {
+                        throw new Error(data.error || 'Error occurred');
+                    }
+                } catch (err) {
+                    console.error('Error:', err);
+                    this.addMsg('❌ ' + err.message, 'error');
+                } finally {
+                    this.showTyping(false);
+                    this.sendBtn.disabled = false;
+                    this.input.focus();
+                }
+            }
+
+            addMsg(text, type) {
+                const welcome = this.messages.querySelector('.welcome');
+                if (welcome) welcome.remove();
+                
+                const div = document.createElement('div');
+                div.className = `message ${type}`;
+                const bubble = document.createElement('div');
+                bubble.className = 'message-bubble';
+                bubble.textContent = text;
+                div.appendChild(bubble);
+                this.messages.appendChild(div);
+                this.messages.scrollTop = this.messages.scrollHeight;
+            }
+
+            showTyping(show) {
+                this.typing.style.display = show ? 'flex' : 'none';
+                if (show) this.messages.scrollTop = this.messages.scrollHeight;
+            }
+
+            async clear() {
+                try {
+                    await fetch('/gemini/clear', { method: 'POST' });
+                    this.messages.innerHTML = '<div class="welcome"><h2>Chat cleared! 🧹</h2><p>Start a new conversation</p></div>';
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+
+            async debug() {
+                try {
+                    const res = await fetch('/gemini/debug');
+                    const data = await res.json();
+                    const info = `🔍 Debug Info:\nModel: ${data.model}\nMessages: ${data.conversation_length}\nSession: ${data.session_id}\nAPI OK: ${data.api_configured}`;
+                    this.addMsg(info, 'bot');
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+        }
+
+        let bot;
+
+        function clearChat() { bot.clear(); }
+        function showDebug() { bot.debug(); }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            bot = new ChatBot();
+            console.log('ChatBot initialized');
+        });
+    </script>
+</body>
+</html>

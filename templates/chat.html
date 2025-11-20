@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Chat - ChatterbookAI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+        .chat-container { height: calc(100vh - 200px); }
+        .message { animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-md p-4 sticky top-0 z-50">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="/" class="text-2xl font-bold text-purple-700">ChatterBook AI</a>
+            <div class="hidden md:flex items-center space-x-6">
+                <a href="/" class="text-gray-600 hover:text-purple-700 transition-colors">
+                    <i class="fas fa-home mr-1"></i>Home
+                </a>
+                <a href="/books" class="text-gray-600 hover:text-purple-700 transition-colors">
+                    <i class="fas fa-book mr-1"></i>Books
+                </a>
+                <a href="/pyqs" class="text-gray-600 hover:text-purple-700 transition-colors">
+                    <i class="fas fa-file-alt mr-1"></i>PYQs
+                </a>
+                <a href="/chat" class="text-purple-700 font-semibold transition-colors">
+                    <i class="fas fa-comments mr-1"></i>Study Chat
+                </a>
+                <a href="/gemini" class="text-gray-600 hover:text-purple-700 transition-colors">
+                    <i class="fas fa-robot mr-1"></i>AI Chat
+                </a>
+            </div>
+            <div class="hidden md:flex items-center space-x-3">
+                <a href="#" class="px-5 py-2 text-purple-700 font-semibold border border-purple-700 rounded-full hover:bg-purple-50 transition-colors">Login</a>
+                <a href="#" class="px-5 py-2 bg-purple-600 text-white font-semibold rounded-full hover:bg-purple-700 transition-colors">Register</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container mx-auto p-4 flex gap-4">
+        <!-- Sidebar -->
+        <div class="w-96 bg-white rounded-2xl shadow-xl p-6">
+            <h2 class="text-2xl font-bold text-purple-700 mb-4 flex items-center">
+                <i class="fas fa-upload mr-2"></i>Upload PDFs
+            </h2>
+            
+            <!-- Upload Area -->
+            <div class="border-2 border-dashed border-purple-300 rounded-xl p-8 text-center mb-4 cursor-pointer hover:border-purple-500 transition-colors" id="uploadArea">
+                <i class="fas fa-file-pdf text-6xl text-purple-400 mb-4"></i>
+                <p class="text-lg font-semibold text-gray-700">Click to upload</p>
+                <p class="text-sm text-gray-500">PDF files only, max 50MB</p>
+                <input type="file" id="fileInput" accept=".pdf" class="hidden">
+            </div>
+
+            <input type="text" id="docTitle" placeholder="Document title (optional)" class="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-purple-500">
+            
+            <button id="processBtn" class="w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors flex items-center justify-center disabled:bg-gray-400 disabled:cursor-not-allowed">
+                <i class="fas fa-cloud-upload-alt mr-2"></i>Process PDF
+            </button>
+
+            <!-- Status Messages -->
+            <div id="statusMessage" class="mt-4 hidden"></div>
+
+            <!-- Backend Status (Hidden by default, only shows if error) -->
+            <div id="backendStatus" class="mt-4 hidden">
+                <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded">
+                    <div class="flex items-center">
+                        <i class="fas fa-exclamation-triangle text-red-500 mr-2"></i>
+                        <p class="text-sm text-red-700 font-semibold">Cannot connect to backend.</p>
+                    </div>
+                    <p class="text-xs text-red-600 mt-1">Please check if Flask is running.</p>
+                </div>
+            </div>
+
+            <button onclick="window.location.href='/'" class="w-full mt-4 bg-white border-2 border-purple-600 text-purple-600 py-3 rounded-lg font-semibold hover:bg-purple-50 transition-colors flex items-center justify-center">
+                <i class="fas fa-home mr-2"></i>Back to Home
+            </button>
+        </div>
+
+        <!-- Chat Area -->
+        <div class="flex-1 bg-white rounded-2xl shadow-xl flex flex-col">
+            <!-- Chat Header -->
+            <div class="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-6 rounded-t-2xl">
+                <h1 class="text-2xl font-bold flex items-center">
+                    <i class="fas fa-robot mr-3"></i>ChatterBooK AI
+                </h1>
+                <p class="text-purple-100 mt-1">Your intelligent study assistant powered by <strong>RAG</strong> (Retrieval Augmented Generation)</p>
+                <div class="flex items-center mt-2">
+                    <div class="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse" id="statusDot"></div>
+                    <span class="text-sm" id="statusText">Online</span>
+                </div>
+            </div>
+
+            <!-- Messages -->
+            <div id="messages" class="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50">
+                <div class="text-center py-12">
+                    <div class="text-6xl mb-4">👋</div>
+                    <h2 class="text-2xl font-bold text-purple-700 mb-2">Welcome to ChatterBooK AI!</h2>
+                    <p class="text-gray-600 mb-4">Your intelligent study assistant powered by <strong>RAG</strong> (Retrieval Augmented Generation)</p>
+                    
+                    <div class="max-w-2xl mx-auto text-left bg-white rounded-lg p-6 shadow-md">
+                        <h3 class="font-bold text-lg mb-3 text-gray-800">How it works:</h3>
+                        <div class="space-y-3">
+                            <div class="flex items-start">
+                                <i class="fas fa-upload text-purple-600 mt-1 mr-3"></i>
+                                <p class="text-gray-700">1. Upload your study materials (PDFs)</p>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-question-circle text-purple-600 mt-1 mr-3"></i>
+                                <p class="text-gray-700">2. Ask questions about the content</p>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-check-circle text-green-600 mt-1 mr-3"></i>
+                                <p class="text-gray-700">3. Get accurate answers with source citations</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="border-t-2 border-gray-200 p-4">
+                <div class="flex gap-3">
+                    <input 
+                        type="text" 
+                        id="messageInput" 
+                        placeholder="Ask me anything about your study materials..."
+                        class="flex-1 px-4 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:border-purple-500 transition-colors"
+                    >
+                    <button 
+                        id="sendBtn"
+                        class="bg-purple-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-purple-700 transition-colors flex items-center disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    >
+                        <i class="fas fa-paper-plane mr-2"></i>Send
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let isProcessing = false;
+        let backendOnline = true;
+
+        // DOM elements
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const processBtn = document.getElementById('processBtn');
+        const docTitle = document.getElementById('docTitle');
+        const statusMessage = document.getElementById('statusMessage');
+        const backendStatus = document.getElementById('backendStatus');
+        const messages = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+
+        // Check backend status on load (non-blocking)
+        async function checkBackendStatus() {
+            try {
+                const response = await fetch('/api/backend-status', { 
+                    method: 'GET',
+                    signal: AbortSignal.timeout(3000) // 3 second timeout
+                });
+                
+                if (response.ok) {
+                    backendOnline = true;
+                    backendStatus.classList.add('hidden');
+                    statusDot.className = 'w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse';
+                    statusText.textContent = 'Online';
+                } else {
+                    throw new Error('Backend not responding');
+                }
+            } catch (error) {
+                console.warn('Backend check failed:', error);
+                backendOnline = false;
+                backendStatus.classList.remove('hidden');
+                statusDot.className = 'w-2 h-2 bg-red-400 rounded-full mr-2';
+                statusText.textContent = 'Offline';
+            }
+        }
+
+        // Check status when page loads (async, doesn't block page)
+        checkBackendStatus();
+
+        // Upload area click
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        // File selection
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                const fileName = fileInput.files[0].name;
+                showStatus(`Selected: ${fileName}`, 'info');
+                processBtn.disabled = false;
+            }
+        });
+
+        // Process PDF
+        processBtn.addEventListener('click', async () => {
+            if (!fileInput.files.length) {
+                showStatus('Please select a PDF file first', 'error');
+                return;
+            }
+
+            if (!backendOnline) {
+                showStatus('Backend is offline. Please check if Flask is running.', 'error');
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const title = docTitle.value.trim();
+
+            if (file.size > 50 * 1024 * 1024) {
+                showStatus('File too large. Maximum size is 50MB', 'error');
+                return;
+            }
+
+            isProcessing = true;
+            processBtn.disabled = true;
+            processBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+            showStatus('Uploading and processing PDF... This may take a minute.', 'info');
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('title', title);
+
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showStatus(`✅ Success! Created ${data.chunks_created} searchable chunks in ${data.processing_time.toFixed(2)}s`, 'success');
+                    fileInput.value = '';
+                    docTitle.value = '';
+                    setTimeout(() => showStatus('', ''), 5000);
+                } else {
+                    showStatus(`❌ Error: ${data.error || data.detail || 'Upload failed'}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`❌ Network error: ${error.message}`, 'error');
+            } finally {
+                isProcessing = false;
+                processBtn.disabled = false;
+                processBtn.innerHTML = '<i class="fas fa-cloud-upload-alt mr-2"></i>Process PDF';
+            }
+        });
+
+        // Send message
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message || isProcessing) return;
+
+            if (!backendOnline) {
+                addMessage('error', 'Backend is offline. Please check if Flask is running.');
+                return;
+            }
+
+            addMessage('user', message);
+            messageInput.value = '';
+            isProcessing = true;
+            sendBtn.disabled = true;
+
+            const typingDiv = addMessage('assistant', 'Thinking...');
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message, k: 5 })
+                });
+
+                const data = await response.json();
+                typingDiv.remove();
+
+                if (response.ok) {
+                    addMessage('assistant', data.answer, data.sources);
+                } else {
+                    addMessage('error', `Error: ${data.error || data.detail || 'Failed to get response'}`);
+                }
+            } catch (error) {
+                typingDiv.remove();
+                addMessage('error', `Network error: ${error.message}`);
+            } finally {
+                isProcessing = false;
+                sendBtn.disabled = false;
+            }
+        }
+
+        sendBtn.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // Helper functions
+        function showStatus(msg, type) {
+            if (!msg) {
+                statusMessage.classList.add('hidden');
+                return;
+            }
+
+            const colors = {
+                success: 'bg-green-50 border-green-500 text-green-700',
+                error: 'bg-red-50 border-red-500 text-red-700',
+                info: 'bg-blue-50 border-blue-500 text-blue-700'
+            };
+
+            statusMessage.className = `mt-4 p-4 rounded border-l-4 ${colors[type] || colors.info}`;
+            statusMessage.textContent = msg;
+            statusMessage.classList.remove('hidden');
+        }
+
+        function addMessage(role, content, sources = []) {
+            const welcomeMsg = messages.querySelector('.text-center');
+            if (welcomeMsg) welcomeMsg.remove();
+
+            const div = document.createElement('div');
+            div.className = `message flex ${role === 'user' ? 'justify-end' : 'justify-start'}`;
+
+            const bubble = document.createElement('div');
+            bubble.className = `max-w-2xl p-4 rounded-2xl ${
+                role === 'user' 
+                    ? 'bg-purple-600 text-white' 
+                    : role === 'error'
+                    ? 'bg-red-100 text-red-700 border border-red-300'
+                    : 'bg-white shadow-md border border-gray-200'
+            }`;
+
+            bubble.innerHTML = content.replace(/\n/g, '<br>');
+
+            if (sources && sources.length > 0) {
+                const sourcesDiv = document.createElement('div');
+                sourcesDiv.className = 'mt-3 pt-3 border-t border-gray-200';
+                sourcesDiv.innerHTML = '<p class="text-sm font-semibold text-gray-600 mb-2">📚 Sources:</p>';
+                sources.forEach(src => {
+                    sourcesDiv.innerHTML += `<p class="text-xs text-gray-600">• ${src.source} (Page ${src.page}, Score: ${src.score})</p>`;
+                });
+                bubble.appendChild(sourcesDiv);
+            }
+
+            div.appendChild(bubble);
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
+
+            return div;
+        }
+    </script>
+</body>
+</html>

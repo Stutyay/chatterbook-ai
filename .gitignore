@@ -1,0 +1,24 @@
+# --- Python & Virtual Environments ---
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+
+# --- Secrets (VERY IMPORTANT) ---
+.env
+*.env
+API Keys.txt
+api_keys.txt
+
+# --- Chatterbook AI Specifics ---
+source_documents/
+temp_uploads/
+pdf_storage/
+mongo_data/
+node_modules/
+
+# --- System Files ---
+.vscode/
+.idea/
+*.DS_Store

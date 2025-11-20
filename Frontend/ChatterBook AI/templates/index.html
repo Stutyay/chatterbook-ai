@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Groq AI Chatbot - Fixed Models</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .chat-container {
+            width: 100%;
+            max-width: 800px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 600px;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .chat-header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+        }
+
+        .chat-header p {
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+
+        .status-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 12px;
+            height: 12px;
+            background: #2ecc71;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message-bubble {
+            max-width: 70%;
+            padding: 15px 20px;
+            border-radius: 20px;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+        .user .message-bubble {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+
+        .bot .message-bubble {
+            background: white;
+            color: #333;
+            border: 1px solid #e0e0e0;
+            border-bottom-left-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .chat-input-form {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s ease;
+            resize: none;
+            font-family: inherit;
+            min-height: 50px;
+            max-height: 100px;
+        }
+
+        .chat-input:focus {
+            border-color: #667eea;
+        }
+
+        .send-button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            font-size: 20px;
+        }
+
+        .send-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .send-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 15px 20px;
+            color: #666;
+            font-style: italic;
+        }
+
+        .typing-dots {
+            display: inline-block;
+        }
+
+        .typing-dots::after {
+            content: '';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60% { content: '...'; }
+            80%, 100% { content: ''; }
+        }
+
+        .welcome-message {
+            text-align: center;
+            color: #666;
+            padding: 40px 20px;
+            font-size: 1.1rem;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .control-btn {
+            padding: 8px 15px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+
+        .control-btn:hover {
+            background: #f0f0f0;
+        }
+
+        .model-info {
+            background: #e8f4fd;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            padding: 10px;
+            border-radius: 10px;
+            margin: 10px 0;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .error-message {
+            background: #ff6b6b;
+            color: white;
+            padding: 10px;
+            border-radius: 10px;
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .chat-container {
+                height: 90vh;
+                margin: 10px;
+            }
+            
+            .message-bubble {
+                max-width: 85%;
+            }
+            
+            .controls {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="status-indicator"></div>
+            <h1>🤖 Groq AI Chatbot</h1>
+            <p>Updated with Latest Models - January 2025</p>
+        </div>
+        
+        <div class="chat-messages" id="chatMessages">
+            <div class="welcome-message">
+                <h3>Welcome! 👋</h3>
+                <p>I'm your AI assistant powered by Groq's latest models!</p>
+                <div class="model-info">
+                    <strong>Current Model:</strong> llama-3.1-8b-instant<br>
+                    <small>Fast & Reliable | 131k Token Context</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="typing-indicator" id="typingIndicator">
+            <span class="typing-dots">AI is thinking</span>
+        </div>
+        
+        <div class="chat-input-container">
+            <div class="controls">
+                <button class="control-btn" onclick="clearChat()">🗑️ Clear Chat</button>
+                <button class="control-btn" onclick="toggleModel()">🔄 Switch Model: <span id="currentModel">llama-3.1</span></button>
+                <button class="control-btn" onclick="debugSession()">🔍 Debug</button>
+            </div>
+            <form class="chat-input-form" id="chatForm">
+                <textarea 
+                    id="messageInput" 
+                    class="chat-input" 
+                    placeholder="Type your message here..." 
+                    rows="1"
+                    required
+                ></textarea>
+                <button type="submit" class="send-button" id="sendButton">
+                    ➤
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        class ChatApp {
+            constructor() {
+                this.initializeEventListeners();
+                this.loadCurrentModel();
+            }
+
+            async loadCurrentModel() {
+                try {
+                    const response = await fetch('/debug');
+                    const data = await response.json();
+                    const modelSpan = document.getElementById('currentModel');
+                    if (data.current_model) {
+                        const displayName = data.current_model.split('-')[0];
+                        modelSpan.textContent = displayName;
+                    }
+                } catch (error) {
+                    console.log('Could not load current model info');
+                }
+            }
+
+            initializeEventListeners() {
+                const form = document.getElementById('chatForm');
+                const input = document.getElementById('messageInput');
+                
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.sendMessage();
+                });
+
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.sendMessage();
+                    }
+                });
+
+                // Auto-resize textarea
+                input.addEventListener('input', () => {
+                    input.style.height = 'auto';
+                    input.style.height = Math.min(input.scrollHeight, 100) + 'px';
+                });
+            }
+
+            async sendMessage() {
+                const input = document.getElementById('messageInput');
+                const message = input.value.trim();
+                
+                if (!message) return;
+
+                // Clear input
+                input.value = '';
+                input.style.height = 'auto';
+
+                // Add user message to UI
+                this.addMessageToUI(message, 'user');
+
+                // Show typing indicator
+                this.showTypingIndicator(true);
+
+                // Disable send button
+                const sendButton = document.getElementById('sendButton');
+                sendButton.disabled = true;
+
+                try {
+                    // Make API call to Flask backend
+                    const response = await fetch('/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ message: message })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        // Add bot response to UI
+                        this.addMessageToUI(data.response, 'bot');
+                    } else {
+                        throw new Error(data.error || 'Unknown error occurred');
+                    }
+
+                } catch (error) {
+                    console.error('Error:', error);
+                    this.addMessageToUI(`❌ Error: ${error.message}`, 'bot');
+                } finally {
+                    // Hide typing indicator and re-enable send button
+                    this.showTypingIndicator(false);
+                    sendButton.disabled = false;
+                    input.focus();
+                }
+            }
+
+            addMessageToUI(message, sender) {
+                const messagesContainer = document.getElementById('chatMessages');
+                const welcomeMessage = messagesContainer.querySelector('.welcome-message');
+                
+                // Remove welcome message if it exists
+                if (welcomeMessage) {
+                    welcomeMessage.remove();
+                }
+
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${sender}`;
+                
+                const bubbleDiv = document.createElement('div');
+                bubbleDiv.className = 'message-bubble';
+                bubbleDiv.textContent = message;
+                
+                messageDiv.appendChild(bubbleDiv);
+                messagesContainer.appendChild(messageDiv);
+                
+                // Scroll to bottom
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+
+            showTypingIndicator(show) {
+                const indicator = document.getElementById('typingIndicator');
+                indicator.style.display = show ? 'block' : 'none';
+                
+                if (show) {
+                    const messagesContainer = document.getElementById('chatMessages');
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                }
+            }
+
+            async clearConversation() {
+                try {
+                    const response = await fetch('/clear', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    });
+
+                    if (response.ok) {
+                        const messagesContainer = document.getElementById('chatMessages');
+                        messagesContainer.innerHTML = `
+                            <div class="welcome-message">
+                                <h3>Chat cleared! 🧹</h3>
+                                <p>Start a new conversation below.</p>
+                            </div>
+                        `;
+                    }
+                } catch (error) {
+                    console.error('Error clearing chat:', error);
+                }
+            }
+
+            async switchModel() {
+                try {
+                    const response = await fetch('/switch_model', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        const modelSpan = document.getElementById('currentModel');
+                        modelSpan.textContent = data.model_display;
+                        
+                        // Clear conversation UI
+                        const messagesContainer = document.getElementById('chatMessages');
+                        messagesContainer.innerHTML = `
+                            <div class="welcome-message">
+                                <h3>Model switched! 🔄</h3>
+                                <p>Now using <strong>${data.new_model}</strong></p>
+                                <p>Start a new conversation below.</p>
+                            </div>
+                        `;
+                    }
+                } catch (error) {
+                    console.error('Error switching model:', error);
+                    this.addMessageToUI('Error switching model. Please try again.', 'bot');
+                }
+            }
+
+            async debugSession() {
+                try {
+                    const response = await fetch('/debug');
+                    const data = await response.json();
+                    
+                    const debugInfo = `🔍 Debug Info:
+Current Model: ${data.current_model}
+Available Models: ${data.available_models.join(', ')}
+Conversation Length: ${data.conversation_length} messages`;
+                    
+                    this.addMessageToUI(debugInfo, 'bot');
+                } catch (error) {
+                    console.error('Error getting debug info:', error);
+                }
+            }
+        }
+
+        // Global functions for button controls
+        let chatApp;
+
+        function clearChat() {
+            chatApp.clearConversation();
+        }
+
+        function toggleModel() {
+            chatApp.switchModel();
+        }
+
+        function debugSession() {
+            chatApp.debugSession();
+        }
+
+        // Initialize app when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            chatApp = new ChatApp();
+        });
+    </script>
+</body>
+</html>

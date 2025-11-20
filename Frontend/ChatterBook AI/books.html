@@ -1,0 +1,385 @@
+!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Books - ChatterBook AI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 2.5em;
+        }
+
+        .home-btn {
+            background: #667eea;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .home-btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        h2 {
+            color: #333;
+            font-size: 2em;
+            margin-bottom: 30px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 1.2em;
+        }
+
+        .error-message {
+            background: #fee;
+            border: 2px solid #fcc;
+            color: #c33;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .books-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .book-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s;
+            border: 2px solid #f0f0f0;
+        }
+
+        .book-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .book-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+        }
+
+        .book-header.algorithms {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .book-header.database {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .book-header.os {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .book-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .book-author {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .book-body {
+            padding: 25px;
+        }
+
+        .book-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .book-info span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .book-description {
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .book-actions {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-download {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-download:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .btn-preview {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-preview:hover {
+            background: #e0e0e0;
+            transform: translateY(-2px);
+        }
+
+        .rating {
+            color: #ffa500;
+        }
+
+        .no-books {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .no-books h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ChatterBook AI</h1>
+            <a href="/" class="home-btn">🏠 Home</a>
+        </header>
+
+        <h2>📚 Study Materials & Textbooks</h2>
+
+        <div id="loading" class="loading">
+            Loading available books...
+        </div>
+
+        <div id="error" class="error-message" style="display: none;"></div>
+
+        <div id="books-container" class="books-grid"></div>
+
+        <div id="no-books" class="no-books" style="display: none;">
+            <h3>No books available</h3>
+            <p>Add PDF files to the <code>source_documents/</code> or <code>static/pdfs/</code> folder to see them here.</p>
+        </div>
+    </div>
+
+    <script>
+        // Book metadata (fallback)
+        const bookMetadata = {
+            'Introduction.to.Algorithms.4th.Leiserson.Stein.and.Clifford.pdf': {
+                title: 'Introduction to Algorithms',
+                author: 'Thomas H. Cormen',
+                pages: 1312,
+                rating: 4.8,
+                description: 'Comprehensive textbook covering fundamental algorithms and data structures with practical examples and analysis.',
+                color: 'algorithms'
+            },
+            'Introduction to Algorithms.pdf': {
+                title: 'Introduction to Algorithms',
+                author: 'Thomas H. Cormen',
+                pages: 1312,
+                rating: 4.8,
+                description: 'Comprehensive textbook covering fundamental algorithms and data structures with practical examples and analysis.',
+                color: 'algorithms'
+            },
+            'algorithms.pdf': {
+                title: 'Introduction to Algorithms',
+                author: 'Thomas H. Cormen',
+                pages: 1312,
+                rating: 4.8,
+                description: 'Comprehensive textbook covering fundamental algorithms and data structures with practical examples and analysis.',
+                color: 'algorithms'
+            },
+            'database.pdf': {
+                title: 'Database System Concepts',
+                author: 'Abraham Silberschatz',
+                pages: 1376,
+                rating: 4.6,
+                description: 'Complete textbook on database concepts, SQL, normalization, and transaction management.',
+                color: 'database'
+            },
+            'operating-system-concepts-9th-edition.pdf': {
+                title: 'Operating System Concepts',
+                author: 'Abraham Silberschatz',
+                pages: 976,
+                rating: 4.7,
+                description: 'Comprehensive guide to operating system principles including processes, memory management, and file systems.',
+                color: 'os'
+            },
+            'os.pdf': {
+                title: 'Operating System Concepts',
+                author: 'Abraham Silberschatz',
+                pages: 976,
+                rating: 4.7,
+                description: 'Comprehensive guide to operating system principles including processes, memory management, and file systems.',
+                color: 'os'
+            }
+        };
+
+        async function loadBooks() {
+            try {
+                const response = await fetch('/api/books/list');
+                const data = await response.json();
+
+                console.log('Books API response:', data);
+
+                if (!data.success) {
+                    throw new Error('Failed to load books');
+                }
+
+                // Collect all PDF files from all locations
+                const allPDFs = [];
+                Object.entries(data.locations).forEach(([location, info]) => {
+                    info.files.forEach(filename => {
+                        allPDFs.push({ filename, location });
+                    });
+                });
+
+                document.getElementById('loading').style.display = 'none';
+
+                if (allPDFs.length === 0) {
+                    document.getElementById('no-books').style.display = 'block';
+                    return;
+                }
+
+                const container = document.getElementById('books-container');
+                container.innerHTML = '';
+
+                allPDFs.forEach(({ filename, location }) => {
+                    const card = createBookCard(filename, location);
+                    container.appendChild(card);
+                });
+
+            } catch (error) {
+                console.error('Error loading books:', error);
+                document.getElementById('loading').style.display = 'none';
+                const errorDiv = document.getElementById('error');
+                errorDiv.textContent = `Error loading books: ${error.message}`;
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        function createBookCard(filename, location) {
+            // Get metadata or use defaults
+            const metadata = bookMetadata[filename] || {
+                title: filename.replace('.pdf', '').replace(/_/g, ' '),
+                author: 'Unknown Author',
+                pages: '?',
+                rating: 4.5,
+                description: 'Educational resource',
+                color: 'default'
+            };
+
+            const card = document.createElement('div');
+            card.className = 'book-card';
+
+            card.innerHTML = `
+                <div class="book-header ${metadata.color}">
+                    <div class="book-title">${metadata.title}</div>
+                    <div class="book-author">by ${metadata.author}</div>
+                </div>
+                <div class="book-body">
+                    <div class="book-info">
+                        <span>📄 PDF</span>
+                        <span>📖 ${metadata.pages} pages</span>
+                        <span class="rating">⭐ ${metadata.rating}/5</span>
+                    </div>
+                    <div class="book-description">
+                        ${metadata.description}
+                    </div>
+                    <div class="book-actions">
+                        <a href="/download/${encodeURIComponent(filename)}" 
+                           class="btn btn-download"
+                           download>
+                            ⬇️ Download
+                        </a>
+                        <a href="/preview/${encodeURIComponent(filename)}" 
+                           class="btn btn-preview"
+                           target="_blank">
+                            👁️ Preview
+                        </a>
+                    </div>
+                    <small style="color: #999; margin-top: 10px; display: block;">
+                        From: ${location}
+                    </small>
+                </div>
+            `;
+
+            return card;
+        }
+
+        // Load books when page loads
+        loadBooks();
+    </script>
+</body>
+</html>

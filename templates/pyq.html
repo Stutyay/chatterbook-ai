@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Previous Year Questions - ChatterbookAI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: white;
+            padding: 20px 50px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #7c3aed;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 30px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: #7c3aed;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 40px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            color: #7c3aed;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+        }
+
+        .pyq-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 25px;
+            margin-top: 30px;
+        }
+
+        .pyq-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .pyq-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .pyq-card h3 {
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+        }
+
+        .pyq-card p {
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+
+        .upload-section {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 40px;
+        }
+
+        .upload-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .upload-area {
+            border: 3px dashed #7c3aed;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .upload-area:hover {
+            background: #f0e7ff;
+        }
+
+        .upload-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: transform 0.2s;
+        }
+
+        .upload-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .info-box {
+            background: #e7f3ff;
+            border-left: 5px solid #2196F3;
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 5px;
+        }
+
+        .info-box h3 {
+            color: #1976D2;
+            margin-bottom: 10px;
+        }
+
+        .back-btn {
+            display: inline-block;
+            margin-top: 30px;
+            padding: 12px 30px;
+            background: #7c3aed;
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            transition: all 0.3s;
+        }
+
+        .back-btn:hover {
+            background: #6d28d9;
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 20px;
+                padding: 20px;
+            }
+            
+            .pyq-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">ChatterBook AI</div>
+        <ul class="nav-links">
+            <li><a href="/">🏠 Home</a></li>
+            <li><a href="/books">📚 Books</a></li>
+            <li><a href="/chat">💬 Study Chat</a></li>
+            <li><a href="/pyqs">📝 PYQs</a></li>
+            <li><a href="/gemini">🤖 AI Chat</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <h1>📝 Previous Year Questions</h1>
+        
+        <div class="info-box">
+            <h3>📚 About PYQs</h3>
+            <p>Access previous year question papers organized by subject and semester. Perfect for exam preparation!</p>
+        </div>
+
+        <div class="upload-section">
+            <h2>Upload New PYQ</h2>
+            <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                <p>📄 Click to upload PDF files</p>
+                <p style="font-size: 0.9rem; color: #666; margin-top: 10px;">Maximum file size: 50MB</p>
+            </div>
+            <input type="file" id="fileInput" accept=".pdf" style="display: none;" onchange="handleFileUpload(event)">
+            <button class="upload-btn" onclick="uploadPYQ()" id="uploadBtn" style="display: none;">Upload PYQ</button>
+        </div>
+
+        <h2 style="margin-bottom: 20px;">📂 Available PYQs</h2>
+        
+        <div class="pyq-grid">
+            <div class="pyq-card">
+                <h3>📘 Data Structures</h3>
+                <p>Semester 3 | 2023</p>
+                <p>5 Questions Papers Available</p>
+            </div>
+
+            <div class="pyq-card">
+                <h3>📗 Algorithms</h3>
+                <p>Semester 4 | 2023</p>
+                <p>4 Questions Papers Available</p>
+            </div>
+
+            <div class="pyq-card">
+                <h3>📙 Operating Systems</h3>
+                <p>Semester 5 | 2023</p>
+                <p>6 Questions Papers Available</p>
+            </div>
+
+            <div class="pyq-card">
+                <h3>📕 Database Systems</h3>
+                <p>Semester 4 | 2023</p>
+                <p>3 Questions Papers Available</p>
+            </div>
+
+            <div class="pyq-card">
+                <h3>📓 Computer Networks</h3>
+                <p>Semester 5 | 2023</p>
+                <p>4 Questions Papers Available</p>
+            </div>
+
+            <div class="pyq-card">
+                <h3>📔 Web Development</h3>
+                <p>Semester 6 | 2023</p>
+                <p>5 Questions Papers Available</p>
+            </div>
+        </div>
+
+        <a href="/" class="back-btn">← Back to Home</a>
+    </div>
+
+    <script>
+        let selectedFile = null;
+
+        function handleFileUpload(event) {
+            selectedFile = event.target.files[0];
+            if (selectedFile) {
+                document.querySelector('.upload-area p').textContent = `Selected: ${selectedFile.name}`;
+                document.getElementById('uploadBtn').style.display = 'block';
+            }
+        }
+
+        async function uploadPYQ() {
+            if (!selectedFile) {
+                alert('Please select a file first!');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('title', selectedFile.name);
+
+            const uploadBtn = document.getElementById('uploadBtn');
+            uploadBtn.textContent = 'Uploading...';
+            uploadBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert(`✅ PYQ uploaded successfully!\n\nProcessed ${data.chunks_created} chunks`);
+                    location.reload();
+                } else {
+                    alert(`❌ Upload failed: ${data.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                alert(`❌ Upload error: ${error.message}`);
+            } finally {
+                uploadBtn.textContent = 'Upload PYQ';
+                uploadBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
