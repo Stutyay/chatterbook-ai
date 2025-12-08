@@ -475,7 +475,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Email:** yaminithepra@gmail.com
 - **Github:** [YaminiThepra](https://github.com/YaminiThepra)
-- **LinkedIn:** [Yamini Thepra]
 
 - **Email:** arushimalviya.16@gmail.com
 - **Github:** [arushimalviya22](https://github.com/arushimalviya22)
