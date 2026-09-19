@@ -1,16 +1,9 @@
-# --- Docker Ignore File ---
-.git/
-.gitignore
-.env
-__pycache__/
+.git
+__pycache__
 *.pyc
-*.pyo
-*.pyd
+.env
+data/
+qdrant_data/
 source_documents/
-temp_uploads/
-.vscode/
-.DS_Store
 venv/
-*.venv/
-env/
-*.env/
+.venv/

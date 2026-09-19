@@ -1,36 +1,45 @@
 import os
-import google.generativeai as genai
+from groq import Groq
+from sentence_transformers import SentenceTransformer
 from dotenv import load_dotenv
-import sys
 import traceback
 
 # Load environment variables
 load_dotenv()
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-# Configure the Gemini client only if the key exists
-if GEMINI_API_KEY:
+# Configure the Groq client only if the key exists
+if GROQ_API_KEY:
     try:
-        genai.configure(api_key=GEMINI_API_KEY)
-        print("Gemini API configured successfully.")
+        groq_client = Groq(api_key=GROQ_API_KEY)
+        print("Groq API configured successfully.")
     except Exception as e:
-        print(f"ERROR: Failed to configure Gemini API: {e}")
+        print(f"ERROR: Failed to configure Groq API: {e}")
+        groq_client = None
 else:
-    print("CRITICAL WARNING: GEMINI_API_KEY not found. AI functions WILL fail.")
+    print("CRITICAL WARNING: GROQ_API_KEY not found. Generative AI functions WILL fail.")
+    groq_client = None
 
 # --- MODEL CONFIGURATION ---
-EMBED_MODEL_NAME = "text-embedding-004"  # Keep this - embeddings model
-GENERATIVE_MODEL_NAME = "models/gemini-2.5-flash"  # UPDATED: Was "gemini-1.5-flash"
+# Load the sentence transformer model locally for embeddings
+try:
+    print("Loading local embedding model: all-MiniLM-L6-v2...")
+    embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+    print("Embedding model loaded successfully.")
+except Exception as e:
+    print(f"ERROR: Failed to load local embedding model: {e}")
+    embedding_model = None
+
+GENERATIVE_MODEL_NAME = "openai/gpt-oss-20b"
 # --- END MODEL CONFIGURATION ---
 
 # --- Function to Embed Document Chunks ---
 def get_embeddings_for_chunks(chunks: list[str]) -> list[list[float]]:
     """
-    Generates vector embeddings for a list of text chunks (documents).
-    Uses RETRIEVAL_DOCUMENT task type.
+    Generates vector embeddings for a list of text chunks (documents) using a local model.
     """
-    if not GEMINI_API_KEY:
-        print("Error: Cannot generate embeddings, GEMINI_API_KEY is missing.")
+    if embedding_model is None:
+        print("Error: Cannot generate embeddings, local model is not loaded.")
         return []
     
     print(f"Attempting to generate embeddings for {len(chunks)} document chunks...")
@@ -44,36 +53,11 @@ def get_embeddings_for_chunks(chunks: list[str]) -> list[list[float]]:
             print("Warning: No valid (non-empty) text chunks provided for embedding.")
             return []
 
-        print(f"Sending {len(valid_chunks)} valid chunks to Gemini API...")
+        print(f"Generating embeddings for {len(valid_chunks)} valid chunks locally...")
         
-        # CRITICAL FIX: Call embed_content ONCE FOR EACH CHUNK
-        # The API doesn't support batch processing with a simple list
-        embeddings = []
-        for i, chunk in enumerate(valid_chunks):
-            try:
-                result = genai.embed_content(
-                    model=f"models/{EMBED_MODEL_NAME}",
-                    content=chunk,
-                    task_type="RETRIEVAL_DOCUMENT"
-                )
-                # Extract the embedding values from the result
-                embeddings.append(result['embedding'])
-                
-                # Print progress every 10 chunks
-                if (i + 1) % 10 == 0:
-                    print(f"  Processed {i + 1}/{len(valid_chunks)} chunks...")
-                    
-            except Exception as e:
-                print(f"ERROR embedding chunk {i+1}: {e}")
-                # Return empty list on any failure to maintain consistency
-                return []
-
-        print("Gemini API call successful. Processing embeddings...")
+        # SentenceTransformer supports batch encoding
+        embeddings = embedding_model.encode(valid_chunks).tolist()
         
-        if len(embeddings) != len(valid_chunks):
-            print(f"ERROR: Embedding result mismatch. Expected {len(valid_chunks)}, got {len(embeddings)}.")
-            return []
-            
         print("Document embeddings generated successfully.")
         return embeddings
 
@@ -85,24 +69,17 @@ def get_embeddings_for_chunks(chunks: list[str]) -> list[list[float]]:
 # --- Function to Embed User Queries ---
 def get_embedding_for_query(query: str) -> list[float] | None:
     """
-    Generates a vector embedding for a single user query string.
-    Uses RETRIEVAL_QUERY task type.
+    Generates a vector embedding for a single user query string using a local model.
     """
-    if not GEMINI_API_KEY:
-        print("Error: Cannot generate query embedding, GEMINI_API_KEY is missing.")
+    if embedding_model is None:
+        print("Error: Cannot generate query embedding, local model is not loaded.")
         return None
         
     print(f"Attempting to generate embedding for query: '{query[:50]}...'")
     try:
-        result = genai.embed_content(
-            model=f"models/{EMBED_MODEL_NAME}",
-            content=query,
-            task_type="RETRIEVAL_QUERY"
-        )
-
+        embedding = embedding_model.encode(query).tolist()
         print("Query embedding generated successfully.")
-        # For single content, result has 'embedding' key with the values
-        return result['embedding']
+        return embedding
         
     except Exception as e:
         print(f"UNEXPECTED ERROR generating query embedding: {e}")
@@ -111,15 +88,13 @@ def get_embedding_for_query(query: str) -> list[float] | None:
 
 # --- Function to Generate Answer from Context ---
 def generate_answer_from_context(context: str, query: str) -> str | None:
-    """Generates an answer using the Gemini generative model based on context."""
-    if not GEMINI_API_KEY: 
-        print("Error: Cannot generate answer, GEMINI_API_KEY is missing.")
-        return "Error: Gemini API Key not configured."
+    """Generates an answer using the Groq generative model based on context."""
+    if not groq_client: 
+        print("Error: Cannot generate answer, GROQ_API_KEY is missing.")
+        return "Error: Groq API Key not configured."
         
-    print("Attempting to generate answer from context...")
+    print("Attempting to generate answer from context using Groq...")
     try:
-        model = genai.GenerativeModel(GENERATIVE_MODEL_NAME)
-        
         prompt = f"""You are ChatterbookAI, a precise study assistant for college students. Your primary function is to answer questions based *only* on the provided context chunks retrieved from their study materials (like previous year questions or textbook sections).
 
 Follow these instructions strictly:
@@ -138,25 +113,50 @@ USER QUESTION: {query}
 
 ANSWER:"""
 
-        response = model.generate_content(prompt)
+        response = groq_client.chat.completions.create(
+            model=GENERATIVE_MODEL_NAME,
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.0
+        )
         print("Answer generation call successful. Processing response...")
         
-        if hasattr(response, 'prompt_feedback') and response.prompt_feedback.block_reason:
-            print(f"Warning: Prompt was blocked. Reason: {response.prompt_feedback.block_reason}")
-            return f"My safety filters prevented me from generating an answer. Reason: {response.prompt_feedback.block_reason}"
-        
-        if hasattr(response, 'text'):
+        answer_text = response.choices[0].message.content
+        if answer_text:
             print("Answer text generated successfully.")
-            return response.text
+            return answer_text
         else:
-             print("Warning: Model response did not contain text.")
-             try:
-                 return response.parts[0].text 
-             except (AttributeError, IndexError):
-                 print("ERROR: Could not extract text from response.")
-                 return "I received a response from the AI, but couldn't extract the answer text."
+            print("Warning: Model response did not contain text.")
+            return "I received a response from the AI, but couldn't extract the answer text."
 
     except Exception as e:
-        print(f"UNEXPECTED ERROR during Gemini generation: {e}")
+        print(f"UNEXPECTED ERROR during Groq generation: {e}")
         traceback.print_exc()
         return f"Error generating answer: {e}"
+
+# --- Function to Generate Generic Chat Response ---
+def generate_generic_chat_response(messages: list[dict]) -> str | None:
+    """
+    Generates a conversational response using Groq, meant for generic AI chat functionality.
+    Messages format should be [{'role': 'user'|'assistant', 'content': '...'}, ...]
+    """
+    if not groq_client:
+        print("Error: Cannot generate answer, GROQ_API_KEY is missing.")
+        return "Error: Groq API Key not configured."
+        
+    try:
+        print("Attempting to generate generic chat response using Groq...")
+        response = groq_client.chat.completions.create(
+            model=GENERATIVE_MODEL_NAME,
+            messages=messages,
+            temperature=0.7
+        )
+        
+        answer_text = response.choices[0].message.content
+        return answer_text
+        
+    except Exception as e:
+        print(f"UNEXPECTED ERROR during Groq generation: {e}")
+        traceback.print_exc()
+        raise e

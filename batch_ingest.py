@@ -1,23 +1,5 @@
-# --- DEBUGGING IMPORTS ---
-import sys
-import google.generativeai as genai
 import os
-
-# --- DEBUGGING PRINTS ---
-print("--- PYTHON ENVIRONMENT DEBUG ---")
-print(f"Python Executable: {sys.executable}")
-print(f"Python Version: {sys.version}")
-try:
-    print(f"Google GenAI Lib Location: {genai.__file__}")
-    print(f"Google GenAI Lib Version: {genai.__version__}")
-except Exception as e:
-    print(f"Could not get Google GenAI library details: {e}")
-print("System Path (sys.path):")
-for p in sys.path:
-    print(f"  - {p}")
-print("--- END DEBUG ---")
 print("\nStarting batch ingest...\n")
-
 # --- Standard Imports ---
 import shutil
 import traceback
@@ -28,11 +10,22 @@ from utils.pdf_utils import extract_text_from_pdf, chunk_text_by_tokens
 from utils.ai_utils import get_embeddings_for_chunks
 
 # --- Configuration ---
-SOURCE_DOCUMENTS_PATH = os.getenv("BATCH_SOURCE_PATH", "./source_documents")
+SOURCE_DOCUMENTS_PATH = os.getenv("BATCH_SOURCE_PATH", "./data/documents")
 PDF_STORAGE_PATH = os.getenv("PDF_STORAGE_PATH", "/app/pdf_storage")
 TEMP_DIR = "./temp_uploads"
+BATCH_SIZE = 10
+PAUSE_DURATION_SECONDS = 60
 
-def process_all_documents():
+def extract_text_from_docx(docx_path):
+    import docx
+    try:
+        doc = docx.Document(docx_path)
+        return "\n".join([para.text for para in doc.paragraphs])
+    except Exception as e:
+        print(f"Error extracting text from {docx_path}: {e}")
+        return ""
+
+def process_all_documents(skip_existing=True):
     """
     Finds PDFs in source_documents folder, processes them,
     and upserts chunks/embeddings to Qdrant.
@@ -66,10 +59,42 @@ def process_all_documents():
     print(f"Starting PDF processing...")
     print(f"PDFs metadata will reference container path: {PDF_STORAGE_PATH}")
 
-    # Process all PDFs in source_documents folder (including subfolders)
+    import time
+    
+    # Collect all files first
+    all_files = []
     for root, dirs, files in os.walk(SOURCE_DOCUMENTS_PATH):
         for filename in files:
-            if filename.lower().endswith(".pdf"):
+            if filename.lower().endswith((".pdf", ".docx")):
+                all_files.append((root, filename))
+                
+    total_files = len(all_files)
+    print(f"Found {total_files} documents to process.")
+
+    for i, (root, filename) in enumerate(all_files):
+        if True:
+            if True:
+                if skip_existing:
+                    try:
+                        from qdrant_client.http import models
+                        result = qdrant_client.scroll(
+                            collection_name="study_materials",
+                            scroll_filter=models.Filter(
+                                must=[
+                                    models.FieldCondition(
+                                        key="original_filename",
+                                        match=models.MatchValue(value=filename)
+                                    )
+                                ]
+                            ),
+                            limit=1
+                        )
+                        if result[0]:  # If there's at least one chunk for this file
+                            print(f"Skipping {filename} as it already exists in Qdrant.")
+                            continue
+                    except Exception as check_e:
+                        print(f"Warning: Could not check if {filename} exists in Qdrant: {check_e}")
+
                 local_file_path = os.path.join(root, filename)
                 relative_path = os.path.relpath(local_file_path, SOURCE_DOCUMENTS_PATH)
                 container_file_path = os.path.join(PDF_STORAGE_PATH, relative_path).replace("\\", "/")
@@ -87,20 +112,41 @@ def process_all_documents():
                     # Extract from filename (remove extension and clean up)
                     subject = os.path.splitext(filename)[0].replace("_", " ").replace("-", " ")
                 
-                # Detect semester from filename if present
+                # Detect semester from filename or path if present
                 semester = "Unknown"
                 filename_lower = filename.lower()
-                if "sem" in filename_lower or "semester" in filename_lower:
-                    # Try to extract semester number
-                    import re
-                    sem_match = re.search(r'sem(?:ester)?[\s_-]*(\d+)', filename_lower)
-                    if sem_match:
-                        semester = f"Sem {sem_match.group(1)}"
+                path_lower = relative_path.replace("\\", "/").lower()
+                import re
+                sem_match = re.search(r'sem(?:ester)?[\s_-]*([1-6])', path_lower)
+                if sem_match:
+                    semester = f"{sem_match.group(1)}"
+                else:
+                    # Fallback mapping based on filename keywords
+                    if any(k in path_lower for k in ["probability", "c++", "programming with c++"]):
+                        semester = "1"
+                    elif any(k in path_lower for k in ["data structure", "data communication"]):
+                        semester = "2"
+                    elif any(k in path_lower for k in ["algorithm", "operating system"]):
+                        semester = "3"
+                    elif any(k in path_lower for k in ["software engineering", "dbms", "database"]):
+                        semester = "4"
+                    elif any(k in path_lower for k in ["network", "cloud"]):
+                        semester = "5"
+                    elif any(k in path_lower for k in ["machine learning", "ml", "artificial intelligence", "ai "]):
+                        semester = "6"
+
+                
+                doc_type = "Unknown"
+                if "pyq" in path_lower or "question paper" in path_lower or "paper" in path_lower or "20" in path_lower:
+                    doc_type = "PYQ"
+                elif "textbook" in path_lower or "book" in path_lower or "notes" in path_lower or "chapter" in path_lower or "guidelines" in path_lower:
+                    doc_type = "Textbook"
 
                 file_metadata = {
                     "container_path": container_file_path,
                     "original_local_path": relative_path.replace("\\", "/"),
                     "semester": semester,
+                    "document_type": doc_type,
                     "subject": subject,
                     "original_filename": filename
                 }
@@ -118,7 +164,12 @@ def process_all_documents():
                     shutil.copy2(local_file_path, temp_file_path)
 
                     # 1. Extract Text
-                    text = extract_text_from_pdf(temp_file_path)
+                    if filename.lower().endswith(".pdf"):
+                        text = extract_text_from_pdf(temp_file_path)
+                    elif filename.lower().endswith(".docx"):
+                        text = extract_text_from_docx(temp_file_path)
+                    else:
+                        text = ""
                     if not text:
                         print(f"Could not extract text. Skipping.")
                         failed_files += 1
@@ -182,12 +233,25 @@ def process_all_documents():
                             os.remove(temp_file_path)
                         except OSError as e_remove:
                             print(f"Warning: Could not remove temporary file {temp_file_path}: {e_remove}")
+                            
+            # Cooldown logic after every BATCH_SIZE files
+            files_handled = i + 1
+            if files_handled % BATCH_SIZE == 0 and files_handled < total_files:
+                batch_num = files_handled // BATCH_SIZE
+                total_batches = (total_files + BATCH_SIZE - 1) // BATCH_SIZE
+                print(f"\nBatch {batch_num} of {total_batches} complete ({files_handled}/{total_files} files). Cooling down for {PAUSE_DURATION_SECONDS} seconds...")
+                time.sleep(PAUSE_DURATION_SECONDS)
 
     print("\n=============================================")
     print(f"Batch ingestion finished.")
     print(f"Successfully processed files: {processed_files}")
-    print(f"Failed/Skipped files: {failed_files}")
+    print(f"Failed files: {failed_files}")
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="Batch Ingest Documents")
+    parser.add_argument("--skip-existing", action="store_true", help="Skip files that already exist in Qdrant")
+    args = parser.parse_args()
+    
     os.makedirs(TEMP_DIR, exist_ok=True)
-    process_all_documents()
+    process_all_documents(skip_existing=args.skip_existing)

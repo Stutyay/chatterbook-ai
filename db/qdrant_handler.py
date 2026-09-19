@@ -24,15 +24,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Smart host detection
-QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
-# If running in Docker and QDRANT_HOST not explicitly set, use service name
-if os.path.exists('/.dockerenv') and QDRANT_HOST == "localhost":
-    QDRANT_HOST = "qdrant"
-
-QDRANT_PORT = int(os.getenv("QDRANT_PORT", 6333))
+# Qdrant Cloud settings
+QDRANT_URL = os.getenv("QDRANT_URL")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "study_materials")
-VECTOR_DIMENSION = int(os.getenv("VECTOR_DIMENSION", 768))
+VECTOR_DIMENSION = int(os.getenv("VECTOR_DIMENSION", 384))
 
 _qdrant_client = None
 
@@ -42,10 +38,10 @@ def get_qdrant_client():
     global _qdrant_client
     if _qdrant_client is None:
         try:
-            logger.info(f"🔌 Connecting to Qdrant at {QDRANT_HOST}:{QDRANT_PORT}")
-            _qdrant_client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
+            logger.info(f"🔌 Connecting to Qdrant Cloud at {QDRANT_URL}")
+            _qdrant_client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
             _qdrant_client.get_collections()  # connection test
-            logger.info(f"✅ Connected to Qdrant at {QDRANT_HOST}:{QDRANT_PORT}")
+            logger.info(f"✅ Connected to Qdrant Cloud at {QDRANT_URL}")
         except Exception as e:
             logger.error(f"❌ Could not connect to Qdrant: {e}")
             _qdrant_client = None
@@ -84,10 +80,20 @@ def ensure_collection_exists(max_retries: int = 5, delay: float = 1.0) -> bool:
                 )
                 time.sleep(delay)
             logger.warning(f"⚠️ Collection '{QDRANT_COLLECTION}' not green after retries.")
-            return False
         else:
             logger.info(f"Collection '{QDRANT_COLLECTION}' already exists.")
-            return True
+            
+        # Ensure payload index for filtering
+        try:
+            client.create_payload_index(
+                collection_name=QDRANT_COLLECTION,
+                field_name="original_filename",
+                field_schema=models.PayloadSchemaType.KEYWORD,
+            )
+        except Exception as e:
+            logger.info(f"Payload index on 'original_filename' may already exist: {e}")
+            
+        return True
     except Exception as e:
         logger.error(f"Error ensuring Qdrant collection '{QDRANT_COLLECTION}': {e}", exc_info=True)
         return False
@@ -147,24 +153,70 @@ def upsert_material_chunks(chunks_data: List[Dict[str, Any]]) -> bool:
 
 
 # ---------------------------
-# Search Function
+# Retrieval Functions
 # ---------------------------
-def search_similar_chunks(query_vector: List[float], k: int = 5) -> List[Dict[str, Any]]:
-    """Search for similar chunks based on a query embedding."""
+def get_all_document_names() -> List[str]:
+    """Retrieve a unique list of all original_filename values currently in Qdrant."""
     client = get_qdrant_client()
     if not client:
         return []
 
     try:
-        search_result = client.search(
+        # Use scroll to efficiently iterate over all points and collect filenames
+        filenames = set()
+        offset = None
+        while True:
+            records, next_offset = client.scroll(
+                collection_name=QDRANT_COLLECTION,
+                limit=1000,
+                offset=offset,
+                with_payload=["original_filename"],
+                with_vectors=False
+            )
+            for record in records:
+                if "original_filename" in record.payload:
+                    filenames.add(record.payload["original_filename"])
+            
+            if next_offset is None:
+                break
+            offset = next_offset
+            
+        return sorted(list(filenames))
+    except Exception as e:
+        logger.error(f"Error retrieving document names from Qdrant: {e}", exc_info=True)
+        return []
+
+# ---------------------------
+# Search Function
+# ---------------------------
+def search_similar_chunks(query_vector: List[float], k: int = 5, book_name: str = None) -> List[Dict[str, Any]]:
+    """Search for similar chunks based on a query embedding, optionally filtered by book_name (original_filename)."""
+    client = get_qdrant_client()
+    if not client:
+        return []
+
+    try:
+        must_conditions = []
+        if book_name is not None and book_name.strip() != "":
+            must_conditions.append(
+                FieldCondition(
+                    key="original_filename",
+                    match=MatchValue(value=book_name.strip())
+                )
+            )
+            
+        query_filter = Filter(must=must_conditions) if must_conditions else None
+
+        search_result = client.query_points(
             collection_name=QDRANT_COLLECTION,
-            query_vector=query_vector,
+            query=query_vector,
             limit=k,
+            query_filter=query_filter,
             with_payload=True,
             with_vectors=False,
         )
         results = [
-            {"id": hit.id, "score": hit.score, "payload": hit.payload} for hit in search_result
+            {"id": hit.id, "score": hit.score, "payload": hit.payload} for hit in search_result.points
         ]
         logger.info(f"🔍 Found {len(results)} similar chunks.")
         return results

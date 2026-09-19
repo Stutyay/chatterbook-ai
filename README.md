@@ -5,7 +5,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-teal.svg)](https://fastapi.tiangolo.com/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A powerful AI-powered study platform that combines Retrieval Augmented Generation (RAG) with Google Gemini AI to help students learn more effectively. Upload your study materials, chat with AI about your content, access previous year questions, and download textbooks - all in one place!
+A powerful AI-powered study platform that combines Retrieval Augmented Generation (RAG) with local AI and Groq to help students learn more effectively. Upload your study materials, chat with AI about your content, access previous year questions, and download textbooks - all in one place!
 
 ## 🌟 Features
 
@@ -13,13 +13,9 @@ A powerful AI-powered study platform that combines Retrieval Augmented Generatio
 - Upload PDF documents (lecture notes, textbooks, research papers)
 - Ask questions and get accurate answers with source citations
 - Vector-based semantic search using Qdrant
-- Context-aware responses powered by Google Gemini 2.5 Flash
+- Context-aware responses powered by Groq LLaMA/Mixtral
 
-### 💬 Standalone AI Chatbot
-- Direct chat interface with Google Gemini AI
-- Conversational memory across sessions
-- No document upload required
-- Perfect for general questions and brainstorming
+
 
 ### 📖 Digital Library
 - Browse and download textbooks
@@ -57,9 +53,9 @@ ChatterbookAI/
 │   ├── Document Embeddings
 │   └── Semantic Search
 │
-└── AI Engine (Google Gemini)
-    ├── Text Embeddings (text-embedding-004)
-    └── Text Generation (gemini-2.5-flash)
+└── AI Engine (Groq)
+    ├── Text Embeddings (local sentence-transformers)
+    └── Text Generation (Groq LLaMA)
 ```
 
 ## 🚀 Quick Start
@@ -68,7 +64,7 @@ ChatterbookAI/
 
 - Python 3.11 or higher
 - Docker and Docker Compose
-- Google Gemini API Key ([Get one here](https://makersuite.google.com/app/apikey))
+- Groq API Key
 
 ### Installation
 
@@ -85,8 +81,8 @@ pip install -r requirements.txt
 
 3. **Create `.env` file**
 ```env
-# Gemini API Key
-GEMINI_API_KEY=your_gemini_api_key_here
+# Groq API Key
+GROQ_API_KEY=your_groq_api_key_here
 
 # Flask Configuration
 FLASK_SECRET_KEY=your_secret_key_here
@@ -148,7 +144,7 @@ python frontend_app.py
 - Get answers with source citations
 
 ### 3. AI Chatbot
-- Visit http://localhost:5173/gemini
+
 - Start chatting immediately (no uploads needed)
 - Ask any question - perfect for explanations and brainstorming
 
@@ -171,7 +167,7 @@ python frontend_app.py
 - **Python-dotenv** - Environment management
 
 ### AI & ML
-- **Google Generative AI** - Gemini 2.5 Flash model
+- **Groq API** - Fast LLaMA models
 - **Text Embeddings** - text-embedding-004 model
 - **Qdrant** - Vector database for semantic search
 
@@ -201,7 +197,7 @@ ChatterbookAI/
 │   ├── login.html              # Login page
 │   ├── register.html           # Registration page
 │   ├── chat.html               # RAG Study Chat
-│   ├── gemini_chat.html        # AI Chatbot
+
 │   ├── books.html              # Books library
 │   └── pyq.html                # Previous Year Questions
 │
@@ -211,7 +207,7 @@ ChatterbookAI/
 │   └── pdfs/                   # Downloadable books
 │
 ├── utils/                       # Utility modules
-│   ├── ai_utils.py             # Gemini AI functions
+│   ├── ai_utils.py             # AI functions
 │   ├── pdf_utils.py            # PDF processing
 │   └── __init__.py
 │
@@ -237,10 +233,7 @@ ChatterbookAI/
 - `POST /api/upload` - Upload PDF for processing
 - `GET /api/backend-status` - Check backend health
 
-#### Gemini Chatbot
-- `POST /gemini/chat` - Chat with Gemini
-- `POST /gemini/clear` - Clear chat history
-- `GET /gemini/debug` - Debug information
+
 
 ### Backend (FastAPI) - Port 8000
 
@@ -261,7 +254,7 @@ ChatterbookAI/
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `GEMINI_API_KEY` | Google Gemini API key | Required |
+| `GROQ_API_KEY` | Groq API key | Required |
 | `FLASK_SECRET_KEY` | Flask session secret | Auto-generated |
 | `BACKEND_URL` | FastAPI backend URL | `http://localhost:8000` |
 | `QDRANT_HOST` | Qdrant host | `localhost` |
@@ -314,15 +307,10 @@ Expected response:
 {
   "status": "healthy",
   "qdrant_connected": true,
-  "gemini_configured": true,
+  "groq_configured": true,
   "pdf_storage_writable": true,
   "timestamp": 1234567890.123
 }
-```
-
-### Test Gemini API
-```bash
-python test_gemini_models.py
 ```
 
 ### Test File Upload
@@ -349,13 +337,10 @@ docker-compose up -d
 docker logs chatterbook_backend
 ```
 
-### Gemini API Error
-**Problem:** "404 model not found"
-
-**Solution:**
-- Verify API key in `.env` file
-- Check if you're using the correct model name: `models/gemini-2.5-flash`
-- Ensure API key has access to Gemini models
+### API Error
+If the chatbot fails to generate a response:
+- Verify your `.env` file has the correct API key
+- Check if the API key has exceeded rate limits
 
 ### PDF Upload Failing
 **Problem:** "Could not read file size"
@@ -390,7 +375,7 @@ QDRANT_HOST=localhost  # NOT "qdrant" when running Flask locally
 ### For Faster Responses
 - Keep Qdrant collection size manageable
 - Use appropriate `k` value in search queries (default: 5)
-- Consider upgrading to Gemini Pro for complex queries
+- Consider upgrading models for complex queries
 
 ## 🔒 Security Best Practices
 
@@ -458,7 +443,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- Google Gemini AI for powerful language models
+- Groq API for powerful language models
 - Qdrant for vector search capabilities
 - Flask and FastAPI communities
 - All contributors and testers

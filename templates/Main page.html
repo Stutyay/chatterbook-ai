@@ -837,16 +837,34 @@
         @media (max-width: 768px) {
             .header-content {
                 flex-direction: column;
-                gap: 20px;
+                gap: 15px;
+                text-align: center;
             }
             
             nav ul {
                 flex-wrap: wrap;
                 justify-content: center;
+                gap: 15px;
             }
             
+            .nav-buttons {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            .hero-content1 {
+                flex-direction: column;
+                gap: 20px;
+            }
+
             .hero h2 {
-                font-size: 2.5rem;
+                font-size: 2.2rem;
+                word-wrap: break-word;
+            }
+            
+            .hero p {
+                font-size: 1rem;
+                padding: 0 15px;
             }
             
             .hero-buttons {
@@ -876,10 +894,7 @@
                 <nav>
                     <ul>
                         <li><a href="/"><i class="fas fa-home"></i> Home</a></li>
-                        <li><a href="/books"><i class="fas fa-book"></i> Books</a></li>
-                        <li><a href="/pyq"><i class="fas fa-file-alt"></i> PYQs</a></li>
                         <li><a href="/chat"><i class="fas fa-robot"></i> Study Chat</a></li>
-                        <li><a href="/gemini"><i class="fas fa-comments"></i> AI Chat</a></li>
                     </ul>
                 </nav>
                 <div class="nav-buttons">
@@ -911,25 +926,14 @@
                 </div>
             </div>
             <div class="hero-content1">
-                <img
-                src="file:///C:/Users/Lenovo/OneDrive/Music/ChatterBook%20AI/chatterbook%20logo.jpeg"
-                alt="ChatterBooK AI Logo"
-                style="
-                width: 160px;
-                height: 160px;
-                border-radius: 50%;
-                object-fit: cover;
-                display: flex;
-                "
-                />
-                <h2>ChatterBooK</h2>
+                <i class="fas fa-robot" style="font-size: 80px; color: var(--primary); background: white; padding: 20px; border-radius: 50%; box-shadow: 0 10px 25px rgba(106, 17, 203, 0.2);"></i>
+                <h2>ChatterBooK AI</h2>
             </div>
             <div class="hero-content"></div>
             <br>
             <p>Your ultimate platform for Computer Science and Mathematics study materials. Access textbooks, guidelines, previous year questions, and curated resources to excel in your studies.</p>
             <div class="hero-buttons">
                 <a href="/chat" class="btn btn-primary"><i class="fas fa-robot"></i> Start Learning</a>
-                <a href="/gemini" class="btn btn-outline" style="color: var(--primary); border-color: var(--primary);"><i class="fas fa-comments"></i> AI Chat</a>
             </div>
         </div>
         <div class="scroll-indicator">
@@ -1000,3 +1004,51 @@
                             <a href="#" class="btn btn-primary">Download PDF</a>
                             <a href="#" class="btn btn-outline">View Online</a>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="copyright">
+                <p>&copy; 2026 ChatterBooK AI. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Animation Observer
+            const animateElements = document.querySelectorAll('.section-title, .feature-card, .subject-tab, .resource-card');
+            
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('animate');
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, {
+                threshold: 0.1,
+                rootMargin: '0px 0px -50px 0px'
+            });
+            
+            animateElements.forEach(el => {
+                observer.observe(el);
+            });
+
+            // Smooth Scroll for "Scroll to Explore"
+            const scrollIndicator = document.querySelector('.scroll-indicator');
+            if(scrollIndicator) {
+                scrollIndicator.addEventListener('click', () => {
+                    document.getElementById('features').scrollIntoView({ behavior: 'smooth' });
+                });
+                scrollIndicator.style.cursor = 'pointer';
+            }
+        });
+    </script>
+</body>
+</html>

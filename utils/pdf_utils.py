@@ -13,65 +13,71 @@ except Exception as e:
 
 # Try to import OCR libraries (optional)
 try:
-    import pytesseract
-    from pdf2image import convert_from_path
+    import fitz  # PyMuPDF
+    import easyocr
+    import numpy as np
+    
+    # Initialize EasyOCR reader once globally to save loading time
+    print("Loading EasyOCR models (this may take a moment)...")
+    # Using 'en' for English. Setting gpu=False to force CPU if PyTorch/CUDA issues arise, 
+    # but let easyocr auto-detect by default.
+    OCR_READER = easyocr.Reader(['en'])
     OCR_AVAILABLE = True
-    print("OCR libraries (pytesseract, pdf2image) loaded successfully.")
+    print("OCR libraries (EasyOCR, PyMuPDF) loaded successfully.")
 except ImportError:
     OCR_AVAILABLE = False
+    OCR_READER = None
     print("OCR libraries not available. Scanned PDFs will be skipped.")
-    print("To enable OCR, install: pip install pytesseract pdf2image pillow")
-    print("And install system dependency: sudo apt-get install tesseract-ocr poppler-utils")
+    print("To enable OCR, install: pip install easyocr PyMuPDF numpy")
 
 
 def extract_text_with_ocr(pdf_file_path: str, batch_size: int = 10) -> str:
     """
-    Extract text from scanned PDF using OCR in batches to save memory.
-    Processes pages in batches to avoid memory overflow on large PDFs.
+    Extract text from scanned PDF using EasyOCR and PyMuPDF.
     """
-    if not OCR_AVAILABLE:
+    if not OCR_AVAILABLE or OCR_READER is None:
         return ""
     
     file_basename = os.path.basename(pdf_file_path)
-    print(f"Attempting OCR extraction from {file_basename}...")
+    print(f"Attempting OCR extraction from {file_basename} using EasyOCR...")
     
     try:
-        from pdf2image import convert_from_path
-        import pytesseract
+        import fitz
+        import numpy as np
         
-        # Get total page count first
-        reader = PdfReader(pdf_file_path)
-        total_pages = len(reader.pages)
-        print(f"OCR will process {total_pages} pages in batches of {batch_size}...")
+        # Open PDF with PyMuPDF
+        doc = fitz.open(pdf_file_path)
+        total_pages = len(doc)
+        print(f"OCR will process {total_pages} pages...")
         
         text = ""
         
-        # Process in batches to avoid memory issues
-        for start_page in range(1, total_pages + 1, batch_size):
-            end_page = min(start_page + batch_size - 1, total_pages)
-            print(f"  OCR processing pages {start_page}-{end_page}/{total_pages}...")
-            
+        for i in range(total_pages):
+            print(f"  OCR processing page {i+1}/{total_pages}...")
             try:
-                # Convert only this batch of pages
-                images = convert_from_path(
-                    pdf_file_path,
-                    dpi=200,  # Lower DPI = less memory (300 is too high for large PDFs)
-                    first_page=start_page,
-                    last_page=end_page
-                )
+                page = doc.load_page(i)
+                # dpi=150 is a good balance of speed vs accuracy for OCR
+                pix = page.get_pixmap(dpi=150)
                 
-                for i, image in enumerate(images):
-                    page_num = start_page + i
-                    page_text = pytesseract.image_to_string(image)
-                    if page_text and page_text.strip():
-                        text += f"\n\n--- Page {page_num} ---\n\n" + page_text.strip()
+                # Convert PyMuPDF pixmap to numpy array for EasyOCR
+                # EasyOCR expects an image array (OpenCV format) or raw bytes
+                # We can save it as bytes and let EasyOCR read it
+                img_bytes = pix.tobytes("png")
                 
-                # Free memory after each batch
-                del images
+                # Run OCR
+                # detail=0 returns only the text strings, not bounding boxes
+                results = OCR_READER.readtext(img_bytes, detail=0, paragraph=True)
                 
-            except Exception as batch_error:
-                print(f"  Warning: Error processing batch pages {start_page}-{end_page}: {batch_error}")
+                page_text = "\n".join(results)
+                
+                if page_text and page_text.strip():
+                    text += f"\n\n--- Page {i+1} ---\n\n" + page_text.strip()
+                    
+            except Exception as page_error:
+                print(f"  Warning: Error processing page {i+1}: {page_error}")
                 continue
+        
+        doc.close()
         
         print(f"OCR extraction complete. Extracted approx {len(text)} characters.")
         return text.strip()

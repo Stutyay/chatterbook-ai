@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Study Chat - ChatterbookAI</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
-        .chat-container { height: calc(100vh - 200px); }
         .message { animation: fadeIn 0.3s ease; }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
@@ -16,26 +16,14 @@
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+<body class="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 h-[100dvh] flex flex-col overflow-hidden">
     <!-- Navigation -->
-    <nav class="bg-white shadow-md p-4 sticky top-0 z-50">
+    <nav class="bg-white shadow-md p-4 z-50 shrink-0">
         <div class="container mx-auto flex justify-between items-center">
             <a href="/" class="text-2xl font-bold text-purple-700">ChatterBook AI</a>
             <div class="hidden md:flex items-center space-x-6">
-                <a href="/" class="text-gray-600 hover:text-purple-700 transition-colors">
-                    <i class="fas fa-home mr-1"></i>Home
-                </a>
-                <a href="/books" class="text-gray-600 hover:text-purple-700 transition-colors">
-                    <i class="fas fa-book mr-1"></i>Books
-                </a>
-                <a href="/pyqs" class="text-gray-600 hover:text-purple-700 transition-colors">
-                    <i class="fas fa-file-alt mr-1"></i>PYQs
-                </a>
-                <a href="/chat" class="text-purple-700 font-semibold transition-colors">
-                    <i class="fas fa-comments mr-1"></i>Study Chat
-                </a>
-                <a href="/gemini" class="text-gray-600 hover:text-purple-700 transition-colors">
-                    <i class="fas fa-robot mr-1"></i>AI Chat
+                <a href="/chat" class="text-purple-700 font-semibold">
+                    <i class="fas fa-comment-dots mr-1"></i>Study Chat
                 </a>
             </div>
             <div class="hidden md:flex items-center space-x-3">
@@ -46,48 +34,9 @@
     </nav>
 
     <!-- Main Container -->
-    <div class="container mx-auto p-4 flex gap-4">
-        <!-- Sidebar -->
-        <div class="w-96 bg-white rounded-2xl shadow-xl p-6">
-            <h2 class="text-2xl font-bold text-purple-700 mb-4 flex items-center">
-                <i class="fas fa-upload mr-2"></i>Upload PDFs
-            </h2>
-            
-            <!-- Upload Area -->
-            <div class="border-2 border-dashed border-purple-300 rounded-xl p-8 text-center mb-4 cursor-pointer hover:border-purple-500 transition-colors" id="uploadArea">
-                <i class="fas fa-file-pdf text-6xl text-purple-400 mb-4"></i>
-                <p class="text-lg font-semibold text-gray-700">Click to upload</p>
-                <p class="text-sm text-gray-500">PDF files only, max 50MB</p>
-                <input type="file" id="fileInput" accept=".pdf" class="hidden">
-            </div>
-
-            <input type="text" id="docTitle" placeholder="Document title (optional)" class="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-purple-500">
-            
-            <button id="processBtn" class="w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors flex items-center justify-center disabled:bg-gray-400 disabled:cursor-not-allowed">
-                <i class="fas fa-cloud-upload-alt mr-2"></i>Process PDF
-            </button>
-
-            <!-- Status Messages -->
-            <div id="statusMessage" class="mt-4 hidden"></div>
-
-            <!-- Backend Status (Hidden by default, only shows if error) -->
-            <div id="backendStatus" class="mt-4 hidden">
-                <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded">
-                    <div class="flex items-center">
-                        <i class="fas fa-exclamation-triangle text-red-500 mr-2"></i>
-                        <p class="text-sm text-red-700 font-semibold">Cannot connect to backend.</p>
-                    </div>
-                    <p class="text-xs text-red-600 mt-1">Please check if Flask is running.</p>
-                </div>
-            </div>
-
-            <button onclick="window.location.href='/'" class="w-full mt-4 bg-white border-2 border-purple-600 text-purple-600 py-3 rounded-lg font-semibold hover:bg-purple-50 transition-colors flex items-center justify-center">
-                <i class="fas fa-home mr-2"></i>Back to Home
-            </button>
-        </div>
-
+    <div class="container mx-auto p-2 md:p-4 max-w-5xl flex-1 flex flex-col min-h-0">
         <!-- Chat Area -->
-        <div class="flex-1 bg-white rounded-2xl shadow-xl flex flex-col">
+        <div class="bg-white rounded-2xl shadow-xl flex flex-col flex-1 overflow-hidden">
             <!-- Chat Header -->
             <div class="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-6 rounded-t-2xl">
                 <h1 class="text-2xl font-bold flex items-center">
@@ -101,7 +50,7 @@
             </div>
 
             <!-- Messages -->
-            <div id="messages" class="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50">
+            <div id="messages" class="flex-1 overflow-y-auto p-3 md:p-6 space-y-4 bg-gray-50">
                 <div class="text-center py-12">
                     <div class="text-6xl mb-4">👋</div>
                     <h2 class="text-2xl font-bold text-purple-700 mb-2">Welcome to ChatterBooK AI!</h2>
@@ -111,16 +60,16 @@
                         <h3 class="font-bold text-lg mb-3 text-gray-800">How it works:</h3>
                         <div class="space-y-3">
                             <div class="flex items-start">
-                                <i class="fas fa-upload text-purple-600 mt-1 mr-3"></i>
-                                <p class="text-gray-700">1. Upload your study materials (PDFs)</p>
+                                <i class="fas fa-book text-purple-600 mt-1 mr-3"></i>
+                                <p class="text-gray-700">1. Select a book from the dropdown (or leave it on "Any" to search everything)</p>
                             </div>
                             <div class="flex items-start">
                                 <i class="fas fa-question-circle text-purple-600 mt-1 mr-3"></i>
-                                <p class="text-gray-700">2. Ask questions about the content</p>
+                                <p class="text-gray-700">2. Ask your question about the content</p>
                             </div>
                             <div class="flex items-start">
                                 <i class="fas fa-check-circle text-green-600 mt-1 mr-3"></i>
-                                <p class="text-gray-700">3. Get accurate answers with source citations</p>
+                                <p class="text-gray-700">3. Get an accurate answer with source citations</p>
                             </div>
                         </div>
                     </div>
@@ -128,19 +77,25 @@
             </div>
 
             <!-- Input Area -->
-            <div class="border-t-2 border-gray-200 p-4">
-                <div class="flex gap-3">
+            <div class="border-t border-gray-200 p-3 md:p-4 bg-white z-10">
+                <div class="flex flex-col md:flex-row gap-2 md:gap-4 mb-3">
+                    <select id="bookFilter" class="w-full px-4 py-3 md:py-2 border-2 border-gray-300 rounded-lg text-base md:text-sm focus:outline-none focus:border-purple-500 shadow-sm">
+                        <option value="">Any (All Documents)</option>
+                        <option disabled>Loading books...</option>
+                    </select>
+                </div>
+                <div class="flex flex-row gap-2 md:gap-3">
                     <input 
                         type="text" 
                         id="messageInput" 
-                        placeholder="Ask me anything about your study materials..."
-                        class="flex-1 px-4 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:border-purple-500 transition-colors"
+                        placeholder="Ask me anything..."
+                        class="flex-1 px-4 py-3 border-2 border-gray-300 rounded-full text-base focus:outline-none focus:border-purple-500 transition-colors shadow-sm"
                     >
                     <button 
                         id="sendBtn"
-                        class="bg-purple-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-purple-700 transition-colors flex items-center disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        class="bg-purple-600 text-white px-6 md:px-8 py-3 rounded-full font-semibold hover:bg-purple-700 transition-colors flex items-center justify-center disabled:bg-gray-400 disabled:cursor-not-allowed shadow-sm min-w-[80px]"
                     >
-                        <i class="fas fa-paper-plane mr-2"></i>Send
+                        <i class="fas fa-paper-plane md:mr-2"></i><span class="hidden md:inline">Send</span>
                     </button>
                 </div>
             </div>
@@ -153,12 +108,6 @@
         let backendOnline = true;
 
         // DOM elements
-        const uploadArea = document.getElementById('uploadArea');
-        const fileInput = document.getElementById('fileInput');
-        const processBtn = document.getElementById('processBtn');
-        const docTitle = document.getElementById('docTitle');
-        const statusMessage = document.getElementById('statusMessage');
-        const backendStatus = document.getElementById('backendStatus');
         const messages = document.getElementById('messages');
         const messageInput = document.getElementById('messageInput');
         const sendBtn = document.getElementById('sendBtn');
@@ -175,7 +124,6 @@
                 
                 if (response.ok) {
                     backendOnline = true;
-                    backendStatus.classList.add('hidden');
                     statusDot.className = 'w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse';
                     statusText.textContent = 'Online';
                 } else {
@@ -184,7 +132,6 @@
             } catch (error) {
                 console.warn('Backend check failed:', error);
                 backendOnline = false;
-                backendStatus.classList.remove('hidden');
                 statusDot.className = 'w-2 h-2 bg-red-400 rounded-full mr-2';
                 statusText.textContent = 'Offline';
             }
@@ -193,71 +140,33 @@
         // Check status when page loads (async, doesn't block page)
         checkBackendStatus();
 
-        // Upload area click
-        uploadArea.addEventListener('click', () => fileInput.click());
-
-        // File selection
-        fileInput.addEventListener('change', () => {
-            if (fileInput.files.length > 0) {
-                const fileName = fileInput.files[0].name;
-                showStatus(`Selected: ${fileName}`, 'info');
-                processBtn.disabled = false;
-            }
-        });
-
-        // Process PDF
-        processBtn.addEventListener('click', async () => {
-            if (!fileInput.files.length) {
-                showStatus('Please select a PDF file first', 'error');
-                return;
-            }
-
-            if (!backendOnline) {
-                showStatus('Backend is offline. Please check if Flask is running.', 'error');
-                return;
-            }
-
-            const file = fileInput.files[0];
-            const title = docTitle.value.trim();
-
-            if (file.size > 50 * 1024 * 1024) {
-                showStatus('File too large. Maximum size is 50MB', 'error');
-                return;
-            }
-
-            isProcessing = true;
-            processBtn.disabled = true;
-            processBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
-            showStatus('Uploading and processing PDF... This may take a minute.', 'info');
-
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('title', title);
-
+        // Fetch books for dropdown
+        async function loadBooks() {
             try {
-                const response = await fetch('/api/upload', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const data = await response.json();
-
+                const response = await fetch('/api/books');
                 if (response.ok) {
-                    showStatus(`✅ Success! Created ${data.chunks_created} searchable chunks in ${data.processing_time.toFixed(2)}s`, 'success');
-                    fileInput.value = '';
-                    docTitle.value = '';
-                    setTimeout(() => showStatus('', ''), 5000);
-                } else {
-                    showStatus(`❌ Error: ${data.error || data.detail || 'Upload failed'}`, 'error');
+                    const books = await response.json();
+                    const bookFilter = document.getElementById('bookFilter');
+                    bookFilter.innerHTML = '<option value="">Any (All Documents)</option>';
+                    books.forEach(book => {
+                        const option = document.createElement('option');
+                        option.value = book;
+                        // For display, optionally strip extensions, but user requested exactly book name or raw
+                        option.textContent = book;
+                        bookFilter.appendChild(option);
+                    });
                 }
             } catch (error) {
-                showStatus(`❌ Network error: ${error.message}`, 'error');
-            } finally {
-                isProcessing = false;
-                processBtn.disabled = false;
-                processBtn.innerHTML = '<i class="fas fa-cloud-upload-alt mr-2"></i>Process PDF';
+                console.error("Failed to load books for dropdown:", error);
+                const bookFilter = document.getElementById('bookFilter');
+                bookFilter.innerHTML = '<option value="">Any (All Documents)</option><option disabled>Failed to load books</option>';
             }
-        });
+        }
+        
+        // Load books on startup
+        loadBooks();
+
+
 
         // Send message
         async function sendMessage() {
@@ -276,18 +185,23 @@
 
             const typingDiv = addMessage('assistant', 'Thinking...');
 
+            const bookVal = document.getElementById('bookFilter').value;
+
+            const payload = { message, k: 5 };
+            if (bookVal) payload.book_name = bookVal;
+
             try {
                 const response = await fetch('/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message, k: 5 })
+                    body: JSON.stringify(payload)
                 });
 
                 const data = await response.json();
                 typingDiv.remove();
 
                 if (response.ok) {
-                    addMessage('assistant', data.answer, data.sources);
+                    addMessage('assistant', data.answer, data.sources, data.query_id);
                 } else {
                     addMessage('error', `Error: ${data.error || data.detail || 'Failed to get response'}`);
                 }
@@ -309,24 +223,7 @@
         });
 
         // Helper functions
-        function showStatus(msg, type) {
-            if (!msg) {
-                statusMessage.classList.add('hidden');
-                return;
-            }
-
-            const colors = {
-                success: 'bg-green-50 border-green-500 text-green-700',
-                error: 'bg-red-50 border-red-500 text-red-700',
-                info: 'bg-blue-50 border-blue-500 text-blue-700'
-            };
-
-            statusMessage.className = `mt-4 p-4 rounded border-l-4 ${colors[type] || colors.info}`;
-            statusMessage.textContent = msg;
-            statusMessage.classList.remove('hidden');
-        }
-
-        function addMessage(role, content, sources = []) {
+        function addMessage(role, content, sources = [], queryId = null) {
             const welcomeMsg = messages.querySelector('.text-center');
             if (welcomeMsg) welcomeMsg.remove();
 
@@ -334,15 +231,20 @@
             div.className = `message flex ${role === 'user' ? 'justify-end' : 'justify-start'}`;
 
             const bubble = document.createElement('div');
-            bubble.className = `max-w-2xl p-4 rounded-2xl ${
+            bubble.className = `w-fit max-w-[95%] md:max-w-[85%] p-4 md:p-5 rounded-2xl shadow-sm ${
                 role === 'user' 
-                    ? 'bg-purple-600 text-white' 
+                    ? 'bg-purple-600 text-white ml-auto' 
                     : role === 'error'
-                    ? 'bg-red-100 text-red-700 border border-red-300'
-                    : 'bg-white shadow-md border border-gray-200'
+                    ? 'bg-red-50 text-red-700 border border-red-200'
+                    : 'bg-white border border-gray-100 prose prose-sm md:prose-base max-w-none text-gray-800'
             }`;
 
-            bubble.innerHTML = content.replace(/\n/g, '<br>');
+            // Parse markdown for assistant messages
+            if (role === 'assistant' && typeof marked !== 'undefined') {
+                bubble.innerHTML = marked.parse(content);
+            } else {
+                bubble.innerHTML = content.replace(/\n/g, '<br>');
+            }
 
             if (sources && sources.length > 0) {
                 const sourcesDiv = document.createElement('div');
@@ -354,12 +256,47 @@
                 bubble.appendChild(sourcesDiv);
             }
 
+            // Add Feedback UI for assistant responses with a query ID
+            if (role === 'assistant' && queryId) {
+                const feedbackDiv = document.createElement('div');
+                feedbackDiv.className = 'mt-3 pt-2 border-t border-gray-100 flex items-center justify-end space-x-3 text-sm';
+                feedbackDiv.innerHTML = `
+                    <span class="text-gray-400">Helpful?</span>
+                    <button class="text-gray-400 hover:text-green-500 transition-colors" onclick="rateAnswer(${queryId}, 'up', this)" title="Thumbs Up">
+                        <i class="fas fa-thumbs-up"></i>
+                    </button>
+                    <button class="text-gray-400 hover:text-red-500 transition-colors" onclick="rateAnswer(${queryId}, 'down', this)" title="Thumbs Down">
+                        <i class="fas fa-thumbs-down"></i>
+                    </button>
+                `;
+                bubble.appendChild(feedbackDiv);
+            }
+
             div.appendChild(bubble);
             messages.appendChild(div);
             messages.scrollTop = messages.scrollHeight;
 
             return div;
         }
+
+        // Feedback API functions
+        async function rateAnswer(queryId, rating, btnElement) {
+            try {
+                // Optimistic UI update
+                const parent = btnElement.parentElement;
+                parent.innerHTML = `<span class="text-${rating === 'up' ? 'green' : 'red'}-600 font-medium text-xs"><i class="fas fa-check mr-1"></i>Rated</span>`;
+                
+                await fetch('/api/feedback/rate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query_id: queryId, rating: rating })
+                });
+            } catch (e) {
+                console.error("Failed to submit rating", e);
+            }
+        }
+
+
     </script>
 </body>
 </html>

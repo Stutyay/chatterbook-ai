@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field, validator
 from contextlib import asynccontextmanager
 import os
 import shutil
-import google.generativeai as genai
 import traceback
 from pathlib import Path
 import time
@@ -26,7 +25,8 @@ from db.qdrant_handler import (
     search_similar_chunks, 
     ensure_collection_exists, 
     get_qdrant_client,
-    delete_document_chunks
+    delete_document_chunks,
+    get_all_document_names
 )
 from utils.pdf_utils import extract_text_from_pdf, chunk_text_by_tokens
 from utils.ai_utils import (
@@ -61,13 +61,12 @@ async def lifespan(app: FastAPI):
         logger.error(f"Failed to connect to Qdrant: {e}")
         raise
     
-    # Configure Gemini
-    if os.getenv("GEMINI_API_KEY"):
-        genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-        logger.info("Gemini API configured")
+    # Configure Groq
+    if os.getenv("GROQ_API_KEY"):
+        logger.info("Groq API key found")
     else:
-        logger.error("GEMINI_API_KEY not found!")
-        raise ValueError("GEMINI_API_KEY is required")
+        logger.error("GROQ_API_KEY not found!")
+        raise ValueError("GROQ_API_KEY is required")
     
     # Ensure PDF storage directory exists
     try:
@@ -112,6 +111,7 @@ async def add_security_headers(request: Request, call_next):
 class ChatQuery(BaseModel):
     message: str = Field(..., min_length=1, max_length=2000)
     k: int = Field(default=5, ge=1, le=20)
+    book_name: Optional[str] = Field(default=None)
     
     @validator('message')
     def validate_message(cls, v):
@@ -140,7 +140,7 @@ class UploadResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     qdrant_connected: bool
-    gemini_configured: bool
+    groq_configured: bool
     pdf_storage_writable: bool
     timestamp: float
 
@@ -196,7 +196,7 @@ async def root():
 async def health_check():
     """Health check endpoint for monitoring"""
     qdrant_ok = False
-    gemini_ok = bool(os.getenv("GEMINI_API_KEY"))
+    groq_ok = bool(os.getenv("GROQ_API_KEY"))
     storage_ok = False
     
     # Check Qdrant
@@ -217,15 +217,21 @@ async def health_check():
     except Exception as e:
         logger.error(f"Storage health check failed: {e}")
     
-    status = "healthy" if (qdrant_ok and gemini_ok and storage_ok) else "degraded"
+    status = "healthy" if (qdrant_ok and groq_ok and storage_ok) else "degraded"
     
     return HealthResponse(
         status=status,
         qdrant_connected=qdrant_ok,
-        gemini_configured=gemini_ok,
+        groq_configured=groq_ok,
         pdf_storage_writable=storage_ok,
         timestamp=time.time()
     )
+
+@app.get("/api/books", response_model=List[str])
+async def get_books():
+    """Returns a list of unique document names currently in the database."""
+    names = get_all_document_names()
+    return names
 
 @app.post("/api/chat", response_model=ChatResponse, responses={400: {"model": ErrorResponse}, 500: {"model": ErrorResponse}})
 async def handle_chat_query(query: ChatQuery = Body(...)):
@@ -236,7 +242,7 @@ async def handle_chat_query(query: ChatQuery = Body(...)):
     1. Embed user query
     2. Search Qdrant for similar chunks
     3. Build context from top results
-    4. Generate answer using Gemini
+    4. Generate answer using Groq
     5. Return answer with sources
     """
     start_time = time.time()
@@ -249,11 +255,15 @@ async def handle_chat_query(query: ChatQuery = Body(...)):
         if not query_embedding:
             raise HTTPException(
                 status_code=500,
-                detail="Failed to embed user query. Check Gemini API Key and logs."
+                detail="Failed to embed user query. Check logs."
             )
         
         # 2. Perform Vector Search in Qdrant
-        search_results = search_similar_chunks(query_embedding, query.k)
+        search_results = search_similar_chunks(
+            query_embedding, 
+            k=query.k, 
+            book_name=query.book_name
+        )
         logger.info(f"Found {len(search_results)} relevant chunks")
         
         if not search_results:
@@ -296,7 +306,7 @@ async def handle_chat_query(query: ChatQuery = Body(...)):
         
         context = "\n\n---\n\n".join(context_parts)
         
-        # 4. Generate answer using Gemini
+        # 4. Generate answer using Groq
         answer = generate_answer_from_context(context, query.message)
         
         if answer is None or answer.startswith("Error"):
@@ -409,7 +419,7 @@ async def upload_and_process_pdf(
         if not embeddings or len(embeddings) != len(chunks):
             raise HTTPException(
                 status_code=500,
-                detail="Failed to generate embeddings. Check Gemini API key and quota."
+                detail="Failed to generate embeddings. Check logs."
             )
         
         # Prepare for Qdrant
@@ -560,7 +570,7 @@ async def test_connections():
         "target_collection_exists": target_collection_exists,
         "pdf_storage_path": PDF_STORAGE_PATH,
         "max_file_size_mb": MAX_FILE_SIZE_MB,
-        "gemini_configured": bool(os.getenv("GEMINI_API_KEY"))
+        "groq_configured": bool(os.getenv("GROQ_API_KEY"))
     }
 
 if __name__ == "__main__":

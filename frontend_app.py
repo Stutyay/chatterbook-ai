@@ -8,10 +8,55 @@ from flask_cors import CORS
 import requests
 import os
 import uuid
-import google.generativeai as genai
 from werkzeug.security import generate_password_hash, check_password_hash
 import json
 from datetime import datetime
+import sqlite3
+
+# Initialize SQLite database for tracking
+DB_FILE = "usage_tracking.db"
+
+def init_db():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS queries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            question TEXT,
+            book_selected TEXT,
+            answer TEXT,
+            found_relevant BOOLEAN,
+            rating TEXT DEFAULT NULL
+        )
+    ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS session_feedback (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            time_saved_estimate TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+init_db()
+
+def log_query(question, book_selected, answer, found_relevant):
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute('''
+            INSERT INTO queries (question, book_selected, answer, found_relevant)
+            VALUES (?, ?, ?, ?)
+        ''', (question, book_selected, answer, found_relevant))
+        query_id = c.lastrowid
+        conn.commit()
+        conn.close()
+        return query_id
+    except Exception as e:
+        print(f"Error logging query: {e}")
+        return None
 
 app = Flask(__name__)
 CORS(app)
@@ -20,10 +65,9 @@ app.secret_key = 'chatterbook_unified_secret_2025'
 # Backend API configuration for RAG
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
-# Gemini API configuration for standalone chatbot
-GEMINI_API_KEY = "AIzaSyB0MFGOHt4gfSCOiQlTfKwepbF-Nn4marY"
-genai.configure(api_key=GEMINI_API_KEY)
-AVAILABLE_MODELS = ["models/gemini-2.5-flash"]  # Use stable Gemini 2.5 Flash
+# Groq API configuration for standalone chatbot
+from utils.ai_utils import generate_generic_chat_response
+AVAILABLE_MODELS = ["openai/gpt-oss-20b"]
 
 # Simple user database (JSON file)
 USERS_FILE = "users.json"
@@ -194,101 +238,10 @@ def index():
     """Serve the main ChatterbookAI interface"""
     return render_template('Main page.html')
 
-@app.route('/books')
-def books():
-    """Serve the books page"""
-    return render_template('books.html')
-
 @app.route('/chat')
 def chat_page():
     """Serve the RAG-based study chat interface"""
     return render_template('chat.html')
-
-@app.route('/pyq')  # Support both /pyq and /pyqs
-@app.route('/pyqs')
-def pyqs_page():
-    """Serve the PYQs (Previous Year Questions) page"""
-    return render_template('pyq.html')
-
-# ============================================================================
-# STANDALONE GEMINI CHATBOT
-# ============================================================================
-
-@app.route('/gemini')
-def gemini_chat():
-    """Serve standalone Gemini chatbot page"""
-    session.setdefault('conversation_id', str(uuid.uuid4()))
-    session.setdefault('conversation', [])
-    session.setdefault('current_model', AVAILABLE_MODELS[0])
-    return render_template('gemini_chat.html')
-
-@app.route('/gemini/chat', methods=['POST'])
-def gemini_chat_api():
-    """Handle Gemini chatbot messages"""
-    try:
-        if not request.is_json:
-            return jsonify({'error': 'Content-Type must be application/json'}), 400
-        
-        data = request.get_json()
-        user_message = data.get('message', '').strip()
-        
-        if not user_message:
-            return jsonify({'error': 'Message cannot be empty'}), 400
-        
-        conversation = session.get('conversation', [])
-        current_model = session.get('current_model', AVAILABLE_MODELS[0])
-        
-        # Initialize Gemini model
-        model = genai.GenerativeModel(current_model)
-        
-        # Generate response with conversation history
-        if conversation:
-            history = []
-            for msg in conversation:
-                if msg["role"] == "user":
-                    history.append({"role": "user", "parts": [msg["content"]]})
-                elif msg["role"] == "assistant":
-                    history.append({"role": "model", "parts": [msg["content"]]})
-            
-            chat_session = model.start_chat(history=history)
-            response = chat_session.send_message(user_message)
-        else:
-            response = model.generate_content(user_message)
-        
-        bot_response = response.text
-        
-        # Save to conversation history
-        conversation.append({"role": "user", "content": user_message})
-        conversation.append({"role": "assistant", "content": bot_response})
-        session['conversation'] = conversation
-        
-        return jsonify({
-            'response': bot_response,
-            'model': current_model,
-            'timestamp': None
-        })
-        
-    except Exception as e:
-        return jsonify({'error': f'Chat error: {str(e)}'}), 500
-
-@app.route('/gemini/clear', methods=['POST'])
-def gemini_clear():
-    """Clear Gemini chat history"""
-    try:
-        session['conversation'] = []
-        return jsonify({'status': 'success'})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/gemini/debug', methods=['GET'])
-def gemini_debug():
-    """Gemini chatbot debug info"""
-    return jsonify({
-        'model': session.get('current_model'),
-        'conversation_length': len(session.get('conversation', [])),
-        'session_id': session.get('conversation_id'),
-        'api_configured': True
-    })
 
 # ============================================================================
 # RAG STUDY CHAT API (Proxies to FastAPI Backend)
@@ -306,8 +259,81 @@ def rag_chat():
             timeout=30
         )
         
-        return jsonify(response.json()), response.status_code
+        resp_data = response.json()
+        status_code = response.status_code
         
+        # Auto-log query if it's a successful response
+        if status_code == 200:
+            answer = resp_data.get('answer', '')
+            sources = resp_data.get('sources', [])
+            # It's relevant if it has sources and didn't start with the fallback message
+            found_relevant = bool(sources) and not answer.startswith("I couldn't find any relevant information")
+            
+            query_id = log_query(
+                data.get('message', ''),
+                data.get('book_name', 'UNFILTERED'),
+                answer,
+                found_relevant
+            )
+            resp_data['query_id'] = query_id
+        
+        return jsonify(resp_data), status_code
+        
+    except Exception as e:
+        print(f"Error in RAG chat: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/feedback/rate', methods=['POST'])
+def rate_query():
+    """Handle thumbs up/down feedback for a query"""
+    try:
+        data = request.get_json()
+        query_id = data.get('query_id')
+        rating = data.get('rating')
+        if not query_id or not rating:
+            return jsonify({'error': 'query_id and rating required'}), 400
+            
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("UPDATE queries SET rating = ? WHERE id = ?", (rating, query_id))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True})
+    except Exception as e:
+        print(f"Error rating query: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/feedback/session', methods=['POST'])
+def session_feedback():
+    """Handle session time-saved feedback"""
+    try:
+        data = request.get_json()
+        time_saved = data.get('time_saved_estimate')
+        if not time_saved:
+            return jsonify({'error': 'time_saved_estimate required'}), 400
+            
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("INSERT INTO session_feedback (time_saved_estimate) VALUES (?)", (time_saved,))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True})
+    except Exception as e:
+        print(f"Error in session feedback: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/books', methods=['GET'])
+def get_books():
+    """Proxy getting books from FastAPI backend"""
+    try:
+        response = requests.get(
+            f"{BACKEND_URL}/api/books",
+            timeout=10
+        )
+        return jsonify(response.json()), response.status_code
+    except Exception as e:
+        print(f"Error getting books: {e}")
+        return jsonify({"error": str(e)}), 500
     except requests.exceptions.ConnectionError:
         return jsonify({
             'error': 'Cannot connect to backend server',
@@ -356,8 +382,8 @@ def upload_pdf():
         if file_size == 0:
             return jsonify({'error': 'File is empty'}), 400
         
-        if file_size > 50 * 1024 * 1024:  # 50MB limit
-            return jsonify({'error': 'File too large. Maximum size is 50MB'}), 400
+        if file_size > 200 * 1024 * 1024:  # 200MB limit
+            return jsonify({'error': 'File too large. Maximum size is 200MB'}), 400
         
         # Prepare files and data for multipart upload
         files = {
@@ -465,105 +491,7 @@ def list_books():
 def serve_static(filename):
     """Serve static files (CSS, JS, images, PDFs)"""
     static_dir = os.path.join(app.root_path, 'static')
-    
-    # Handle PDF requests specifically
-    if filename.startswith('pdfs/'):
-        pdf_path = os.path.join(static_dir, filename)
-        if os.path.exists(pdf_path):
-            print(f"[DOWNLOAD] Serving PDF: {filename}")
-            return send_from_directory(static_dir, filename, as_attachment=True)
-        else:
-            print(f"[DOWNLOAD ERROR] PDF not found: {pdf_path}")
-            # List available PDFs for debugging
-            pdfs_dir = os.path.join(static_dir, 'pdfs')
-            if os.path.exists(pdfs_dir):
-                available = os.listdir(pdfs_dir)
-                print(f"[DOWNLOAD] Available PDFs: {available}")
-            return jsonify({
-                'error': 'PDF not found',
-                'requested': filename,
-                'path': pdf_path
-            }), 404
-    
     return send_from_directory(static_dir, filename)
-
-@app.route('/download/<filename>')
-def download_file(filename):
-    """Direct download endpoint for PDFs - Searches multiple locations"""
-    try:
-        # Search in multiple possible locations
-        possible_dirs = [
-            os.path.join(app.root_path, 'static', 'pdfs'),
-            os.path.join(app.root_path, 'source_documents'),
-            os.path.join(os.getcwd(), 'source_documents'),
-            os.path.join(os.getcwd(), 'static', 'pdfs')
-        ]
-        
-        print(f"\n[DOWNLOAD] Request for: {filename}")
-        
-        # Try each directory
-        for search_dir in possible_dirs:
-            file_path = os.path.join(search_dir, filename)
-            print(f"[DOWNLOAD] Checking: {file_path}")
-            
-            if os.path.exists(file_path):
-                print(f"[DOWNLOAD] ✅ Found file in: {search_dir}")
-                return send_from_directory(search_dir, filename, as_attachment=True)
-        
-        # If not found, list all available PDFs
-        print(f"[DOWNLOAD ERROR] File not found in any location")
-        all_pdfs = []
-        
-        for search_dir in possible_dirs:
-            if os.path.exists(search_dir):
-                pdfs = [f for f in os.listdir(search_dir) if f.lower().endswith('.pdf')]
-                all_pdfs.extend([(f, search_dir) for f in pdfs])
-                print(f"[DOWNLOAD] PDFs in {search_dir}: {pdfs}")
-        
-        return jsonify({
-            'error': 'File not found',
-            'requested': filename,
-            'searched_locations': possible_dirs,
-            'available_pdfs': [pdf[0] for pdf in all_pdfs],
-            'help': 'File not found in static/pdfs/ or source_documents/'
-        }), 404
-        
-    except Exception as e:
-        print(f"[DOWNLOAD ERROR] {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/preview/<filename>')
-def preview_file(filename):
-    """Preview PDF files inline in browser"""
-    try:
-        # Search in multiple possible locations
-        possible_dirs = [
-            os.path.join(app.root_path, 'static', 'pdfs'),
-            os.path.join(app.root_path, 'source_documents'),
-            os.path.join(os.getcwd(), 'source_documents'),
-            os.path.join(os.getcwd(), 'static', 'pdfs')
-        ]
-        
-        print(f"\n[PREVIEW] Request for: {filename}")
-        
-        # Try each directory
-        for search_dir in possible_dirs:
-            file_path = os.path.join(search_dir, filename)
-            
-            if os.path.exists(file_path):
-                print(f"[PREVIEW] ✅ Found file in: {search_dir}")
-                return send_from_directory(search_dir, filename, mimetype='application/pdf')
-        
-        print(f"[PREVIEW ERROR] File not found")
-        return jsonify({'error': 'File not found'}), 404
-        
-    except Exception as e:
-        print(f"[PREVIEW ERROR] {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
 
 @app.errorhandler(404)
 def not_found(e):
@@ -593,7 +521,7 @@ if __name__ == '__main__':
     print("🚀 ChatterbookAI - Unified Frontend Server Starting (FIXED VERSION)...")
     print("=" * 80)
     print(f"📡 RAG Backend URL: {BACKEND_URL}")
-    print(f"🤖 Gemini API: {'Configured ✅' if GEMINI_API_KEY else 'Not configured ❌'}")
+    print(f"🤖 Groq API via Backend: Enabled ✅")
     print(f"🔐 Authentication: Enabled ✅")
     print("🌐 Server URL: http://localhost:5173")
     print("=" * 80)
@@ -607,12 +535,11 @@ if __name__ == '__main__':
     print("   • http://localhost:5173/chat (Study Chat - RAG)")
     print("   • http://localhost:5173/pyqs (Previous Year Questions)")
     print("\n   Standalone AI Chatbot:")
-    print("   • http://localhost:5173/gemini (Gemini Chatbot)")
     print("=" * 80)
     print("\n⚠️  Important:")
     print("   1. For RAG features: docker-compose up -d")
     print("   2. Backend health: http://localhost:8000/api/health")
-    print("   3. Gemini chatbot works independently (no backend needed)")
+    print("   3. Standalone chatbot works independently (via ai_utils)")
     print("   4. User data stored in: users.json")
     print("   5. PDFs should be in: static/pdfs/ directory")
     print("=" * 80)
