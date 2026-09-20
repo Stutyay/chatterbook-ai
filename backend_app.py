@@ -563,8 +563,6 @@ async def test_connections():
     
     return {
         "qdrant_status": qdrant_status,
-        "qdrant_host": os.getenv("QDRANT_HOST"),
-        "qdrant_port": os.getenv("QDRANT_PORT"),
         "qdrant_collections_found": q_collections,
         "target_collection_name": os.getenv("QDRANT_COLLECTION"),
         "target_collection_exists": target_collection_exists,

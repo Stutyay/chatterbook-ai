@@ -39,8 +39,8 @@ def process_all_documents(skip_existing=True):
             return
         print("Qdrant connection established and collection verified.")
     except Exception as e:
-        print(f"CRITICAL ERROR: Could not connect to Qdrant: {e}")
-        print("Ensure the Qdrant container is running and .env settings (QDRANT_HOST/PORT) are correct.")
+        print(f"Failed to connect to Qdrant: {e}")
+        print("Ensure the Qdrant Cloud settings (QDRANT_URL/QDRANT_API_KEY) in .env are correct.")
         return
 
     # Check source path
