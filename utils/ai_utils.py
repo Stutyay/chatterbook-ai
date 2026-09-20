@@ -1,6 +1,6 @@
 import os
 from groq import Groq
-from sentence_transformers import SentenceTransformer
+from fastembed import TextEmbedding
 from dotenv import load_dotenv
 import traceback
 
@@ -23,8 +23,8 @@ else:
 # --- MODEL CONFIGURATION ---
 # Load the sentence transformer model locally for embeddings
 try:
-    print("Loading local embedding model: all-MiniLM-L6-v2...")
-    embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+    print("Loading local embedding model: fastembed (all-MiniLM-L6-v2)...")
+    embedding_model = TextEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
     print("Embedding model loaded successfully.")
 except Exception as e:
     print(f"ERROR: Failed to load local embedding model: {e}")
@@ -55,8 +55,8 @@ def get_embeddings_for_chunks(chunks: list[str]) -> list[list[float]]:
 
         print(f"Generating embeddings for {len(valid_chunks)} valid chunks locally...")
         
-        # SentenceTransformer supports batch encoding
-        embeddings = embedding_model.encode(valid_chunks).tolist()
+        # fastembed supports batch encoding and returns a generator of numpy arrays
+        embeddings = [emb.tolist() for emb in embedding_model.embed(valid_chunks)]
         
         print("Document embeddings generated successfully.")
         return embeddings
@@ -77,7 +77,7 @@ def get_embedding_for_query(query: str) -> list[float] | None:
         
     print(f"Attempting to generate embedding for query: '{query[:50]}...'")
     try:
-        embedding = embedding_model.encode(query).tolist()
+        embedding = list(embedding_model.embed([query]))[0].tolist()
         print("Query embedding generated successfully.")
         return embedding
         
