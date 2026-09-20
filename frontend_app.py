@@ -60,7 +60,7 @@ def log_query(question, book_selected, answer, found_relevant):
 
 app = Flask(__name__)
 CORS(app)
-app.secret_key = 'chatterbook_unified_secret_2025'
+app.secret_key = os.environ.get('SECRET_KEY')
 
 # Backend API configuration for RAG
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
