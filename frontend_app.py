@@ -65,9 +65,7 @@ app.secret_key = os.environ.get('SECRET_KEY')
 # Backend API configuration for RAG
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
-# Groq API configuration for standalone chatbot
-from utils.ai_utils import generate_generic_chat_response
-AVAILABLE_MODELS = ["openai/gpt-oss-20b"]
+
 
 # Simple user database (JSON file)
 USERS_FILE = "users.json"
@@ -521,7 +519,6 @@ if __name__ == '__main__':
     print("🚀 ChatterbookAI - Unified Frontend Server Starting (FIXED VERSION)...")
     print("=" * 80)
     print(f"📡 RAG Backend URL: {BACKEND_URL}")
-    print(f"🤖 Groq API via Backend: Enabled ✅")
     print(f"🔐 Authentication: Enabled ✅")
     print("🌐 Server URL: http://localhost:5173")
     print("=" * 80)
@@ -534,12 +531,11 @@ if __name__ == '__main__':
     print("   • http://localhost:5173/books (Books)")
     print("   • http://localhost:5173/chat (Study Chat - RAG)")
     print("   • http://localhost:5173/pyqs (Previous Year Questions)")
-    print("\n   Standalone AI Chatbot:")
     print("=" * 80)
     print("\n⚠️  Important:")
     print("   1. For RAG features: docker-compose up -d")
     print("   2. Backend health: http://localhost:8000/api/health")
-    print("   3. Standalone chatbot works independently (via ai_utils)")
+
     print("   4. User data stored in: users.json")
     print("   5. PDFs should be in: static/pdfs/ directory")
     print("=" * 80)
