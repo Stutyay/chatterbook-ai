@@ -21,10 +21,11 @@ else:
     groq_client = None
 
 # --- MODEL CONFIGURATION ---
-# Load the sentence transformer model locally for embeddings
 try:
     print("Loading local embedding model: fastembed (all-MiniLM-L6-v2)...")
-    embedding_model = TextEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    cache_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "model_cache")
+    os.makedirs(cache_dir, exist_ok=True)
+    embedding_model = TextEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2", cache_dir=cache_dir)
     print("Embedding model loaded successfully.")
 except Exception as e:
     print(f"ERROR: Failed to load local embedding model: {e}")

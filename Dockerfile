@@ -18,7 +18,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 # Pre-download the fastembed model to prevent timeout on first startup
-RUN python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='sentence-transformers/all-MiniLM-L6-v2')"
+RUN python -c "import os; from fastembed import TextEmbedding; os.makedirs('/app/model_cache', exist_ok=True); TextEmbedding(model_name='sentence-transformers/all-MiniLM-L6-v2', cache_dir='/app/model_cache')"
 
 # Copy application code
 COPY . .
@@ -28,7 +28,7 @@ RUN mkdir -p /app/pdf_storage /app/source_documents
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
     CMD curl -f http://localhost:${PORT:-8000}/api/health || exit 1
 
 CMD sh -c "uvicorn backend_app:app --host 0.0.0.0 --port ${PORT:-8000}"
