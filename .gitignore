@@ -24,7 +24,6 @@ node_modules/
 *.DS_Store
 
 # --- Local & Untracked Files ---
-Secret.txt
 usage_tracking.db
 scratch/
 data/
