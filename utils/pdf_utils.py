@@ -14,36 +14,33 @@ except Exception as e:
 # Try to import OCR libraries (optional)
 try:
     import fitz  # PyMuPDF
-    import easyocr
-    import numpy as np
+    import pytesseract
+    from PIL import Image
+    import io
     
-    # Initialize EasyOCR reader once globally to save loading time
-    print("Loading EasyOCR models (this may take a moment)...")
-    # Using 'en' for English. Setting gpu=False to force CPU if PyTorch/CUDA issues arise, 
-    # but let easyocr auto-detect by default.
-    OCR_READER = easyocr.Reader(['en'])
     OCR_AVAILABLE = True
-    print("OCR libraries (EasyOCR, PyMuPDF) loaded successfully.")
+    print("OCR libraries (pytesseract, PyMuPDF, pillow) loaded successfully.")
 except ImportError:
     OCR_AVAILABLE = False
-    OCR_READER = None
     print("OCR libraries not available. Scanned PDFs will be skipped.")
-    print("To enable OCR, install: pip install easyocr PyMuPDF numpy")
+    print("To enable OCR, install: pip install pytesseract PyMuPDF pillow")
 
 
 def extract_text_with_ocr(pdf_file_path: str, batch_size: int = 10) -> str:
     """
-    Extract text from scanned PDF using EasyOCR and PyMuPDF.
+    Extract text from scanned PDF using pytesseract and PyMuPDF.
     """
-    if not OCR_AVAILABLE or OCR_READER is None:
+    if not OCR_AVAILABLE:
         return ""
     
     file_basename = os.path.basename(pdf_file_path)
-    print(f"Attempting OCR extraction from {file_basename} using EasyOCR...")
+    print(f"Attempting OCR extraction from {file_basename} using pytesseract...")
     
     try:
         import fitz
-        import numpy as np
+        import pytesseract
+        from PIL import Image
+        import io
         
         # Open PDF with PyMuPDF
         doc = fitz.open(pdf_file_path)
@@ -59,16 +56,12 @@ def extract_text_with_ocr(pdf_file_path: str, batch_size: int = 10) -> str:
                 # dpi=150 is a good balance of speed vs accuracy for OCR
                 pix = page.get_pixmap(dpi=150)
                 
-                # Convert PyMuPDF pixmap to numpy array for EasyOCR
-                # EasyOCR expects an image array (OpenCV format) or raw bytes
-                # We can save it as bytes and let EasyOCR read it
+                # Convert PyMuPDF pixmap to PIL Image
                 img_bytes = pix.tobytes("png")
+                image = Image.open(io.BytesIO(img_bytes))
                 
                 # Run OCR
-                # detail=0 returns only the text strings, not bounding boxes
-                results = OCR_READER.readtext(img_bytes, detail=0, paragraph=True)
-                
-                page_text = "\n".join(results)
+                page_text = pytesseract.image_to_string(image)
                 
                 if page_text and page_text.strip():
                     text += f"\n\n--- Page {i+1} ---\n\n" + page_text.strip()
