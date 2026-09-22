@@ -1,0 +1,16 @@
+name: SnapDeploy Keep-Alive
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping backend
+        run: curl -s -o /dev/null -w "Backend status: %{http_code}\n" https://chatterbook-backend-c1c63.containers.snapdeploy.app
+
+      - name: Ping frontend
+        run: curl -s -o /dev/null -w "Frontend status: %{http_code}\n" https://chatterbook-frontend-c1c63.containers.snapdeploy.app
