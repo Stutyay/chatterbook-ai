@@ -115,26 +115,36 @@
         const statusText = document.getElementById('statusText');
 
         // Check backend status on load (non-blocking)
-        async function checkBackendStatus() {
-            try {
-                const response = await fetch('/api/backend-status', { 
-                    method: 'GET',
-                    signal: AbortSignal.timeout(3000) // 3 second timeout
-                });
-                
-                if (response.ok) {
-                    backendOnline = true;
-                    statusDot.className = 'w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse';
-                    statusText.textContent = 'Online';
-                } else {
-                    throw new Error('Backend not responding');
+        async function checkBackendStatus(retries = 5, delayMs = 3000) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch('/api/backend-status', { 
+                        method: 'GET',
+                        signal: AbortSignal.timeout(8000) // 8 second timeout
+                    });
+                    
+                    if (response.ok) {
+                        backendOnline = true;
+                        statusDot.className = 'w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse';
+                        statusText.textContent = 'Online';
+                        return; // Success, exit the loop
+                    }
+                } catch (error) {
+                    console.warn(`Backend check attempt ${i + 1} failed:`, error);
                 }
-            } catch (error) {
-                console.warn('Backend check failed:', error);
-                backendOnline = false;
-                statusDot.className = 'w-2 h-2 bg-red-400 rounded-full mr-2';
-                statusText.textContent = 'Offline';
+                
+                // Wait before retrying if not the last attempt
+                if (i < retries - 1) {
+                    statusText.textContent = `Waking backend (${i + 1}/${retries})...`;
+                    statusDot.className = 'w-2 h-2 bg-yellow-400 rounded-full mr-2 animate-pulse';
+                    await new Promise(resolve => setTimeout(resolve, delayMs));
+                }
             }
+            
+            // If all attempts fail
+            backendOnline = false;
+            statusDot.className = 'w-2 h-2 bg-red-400 rounded-full mr-2';
+            statusText.textContent = 'Offline';
         }
 
         // Check status when page loads (async, doesn't block page)
