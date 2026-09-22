@@ -10,7 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping backend
-        run: curl -A "GitHub-Actions-Keepalive" -s -o /dev/null -w "Backend status: %{http_code}\n" https://chatterbook-backend-c1c63.containers.snapdeploy.app || true
+        run: |
+          curl -A "GitHub-Actions-Keepalive" -s -o /dev/null -w "Backend status: %{http_code}\n" https://chatterbook-backend-c1c63.containers.snapdeploy.app || true
 
       - name: Ping frontend
-        run: curl -A "GitHub-Actions-Keepalive" -s -o /dev/null -w "Frontend status: %{http_code}\n" https://chatterbook-frontend-c1c63.containers.snapdeploy.app || true
+        run: |
+          curl -A "GitHub-Actions-Keepalive" -s -o /dev/null -w "Frontend status: %{http_code}\n" https://chatterbook-frontend-c1c63.containers.snapdeploy.app || true
